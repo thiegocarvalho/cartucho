@@ -130,5 +130,5 @@ dist
 .pnp.*
 .vercel
 
-#no public assets
+#Remove Public Build
 /public/*
