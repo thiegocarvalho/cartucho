@@ -10,7 +10,7 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 
 app.get('/', (req, res) => {
-    const data = { title: 'Página Inicial', message: 'Bem-vindo ao EJS com Express!' };
+    const data = { };
     res.render('index', data);
 });
 
@@ -24,8 +24,7 @@ app.get('/play', (req, res) => {
     res.render('play', data);
 });
 
-// Iniciando o servidor
-const PORT = 3000;
+const port = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
+    console.log(`Servidor rodando na porta: ${PORT}`);
 });
