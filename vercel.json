@@ -1,0 +1,19 @@
+{
+    "version": 2,
+    "projectId": "prj_lFFEupTHUQ5ggRAClUwjAohA9IIm",
+    "orgId": "team_okpZVz7W4cdpw3104pghlQL7",
+    "builds": [
+      {
+        "src": "index.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "settings": {
+      "devCommand": "npm run dev",
+      "installCommand": "npm install",
+      "buildCommand": "npm run build",
+      "outputDirectory": "public",
+      "nodeVersion": "22.x"
+    }
+  }
+  

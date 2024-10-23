@@ -1,11 +1,11 @@
 {
   "name": "cartucho",
   "version": "1.0.0",
-  "main": "app.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node app.js",
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "tailwind:css": "postcss public/stylesheets/tailwind.css -o public/stylesheets/style.css"
+    "build": "npx tailwindcss -i src/input.css -o assets/output.css --minify"
   },
   "keywords": [],
   "author": "",
