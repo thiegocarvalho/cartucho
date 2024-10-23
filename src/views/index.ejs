@@ -13,7 +13,7 @@
     <div class="container mx-auto px-4 mt-15 max-w-2xl">
 
         <div class="flex justify-center items-center mb-5">
-            <iframe data-aa='2360647' src='//ad.a-ads.com/2360647?size=320x50'
+            <iframe id='AdsTop' data-aa='2360647' src='//ad.a-ads.com/2360647?size=320x50'
                 style='width:320px; height:50px; border:0px; padding:0; overflow:hidden; background-color: transparent;'></iframe>
         </div>
 
@@ -92,8 +92,17 @@
         document.addEventListener('DOMContentLoaded', function () {
             const isMobile = window.innerWidth <= 768;
             const desktopAdsDiv = document.getElementById('desktopADs');
-            if (isMobile && desktopAdsDiv) {
-                desktopAdsDiv.style.display = 'none';
+            const adsTopDiv = document.getElementById('AdsTop');
+
+            const isLocalhost = window.location.hostname === 'localhost';
+
+            if (isLocalhost || (isMobile && desktopAdsDiv)) {
+                if (desktopAdsDiv) {
+                    desktopAdsDiv.style.display = 'none';
+                }
+                if (adsTopDiv) {
+                    adsTopDiv.style.display = 'none';
+                }
             }
         });
     </script>
