@@ -6,6 +6,15 @@ A retro game emulator that allows you to play classic games directly in your bro
 
 You can try out the emulator at [cartucho.vercel.app](https://cartucho.vercel.app/).
 
+| CID (IPFS HASH)                                   | Platform           | Name                      |
+|---------------------------------------------------|--------------------|---------------------------|
+| QmZfuWPvHRJ349sh83ugigyt28bjhsb1QkTxFUjjgvjVk8    | Sega Mega Drive     | Ultimate Mortal Kombat 3  |
+| QmVGuDy3gS9byoXQ6WfsTtZqrP2n9kbbQuqtdBSAe9Ru2n    | Sega Mega Drive     | Sonic 2                   |
+| QmXR4bG2NZrsJ2xiQbJj9pUr5W8apCVC4cVuLBD6SnreBk    | SNES                | Super Mario Bros          |
+| QmPJD8k2Lawf6hEo79AjUGFU8xoZ6bNMjC12GM9AAPrA7v    | Game Boy Advanced   | Pokemon Red               |
+| QmcCiPqSk3mECFjrb1jdW21r3DSULCND5CymZFKT82DCQw    | Nintendo 64        | Super Smash Bros           |
+
+
 ## Features
 
 - **Support for ROMs and ISOs:** Load games directly from IPFS.
