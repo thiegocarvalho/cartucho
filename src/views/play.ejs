@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 <%= cid %> - <%= platform %>
+    </title>
+    <link rel="stylesheet" href="/assets/output.css">
+    <script src="/node_modules/flyonui/flyonui.js"></script>
+</head>
+
+<body>
+    <div class="container mx-auto px-4 mt-15 max-w-2xl">
+
+        <div class="mockup-browser bg-base-300">
+            <div class="mockup-browser-toolbar">
+                <div class="input bg-base-200">🎮 <%= cid %> - <%= platform %>
+                </div>
+            </div>
+            <div class="justify-center bg-base-200">
+                <div style='width:640px;height:480px;max-width:100%'>
+                    <div id='game'></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="footer footer-center mt-10">
+        <nav class="grid grid-flow-col gap-4 text-base-content/90">
+            <a href="/how-its-works" class="link link-hover">How Cartucho Works</a>
+        </nav>
+    </footer>
+
+    <script type='text/javascript'>
+        EJS_player = '#game';
+        EJS_core = '<%= platform %>';
+        EJS_biosUrl = '';
+        EJS_backgroundColor = '#1D1A26';
+        EJS_color = '#794DFF';
+        EJS_gameUrl = 'https://ipfs.io/ipfs/<%= cid %>';
+        EJS_pathtodata = '/src/EmulatorJs/data/';
+    </script>
+    <script src='/src/EmulatorJs/data/loader.js'></script>
+</body>
+
+</html>

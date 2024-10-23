@@ -1,0 +1,24 @@
+{
+  "name": "cartucho",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tailwind:css": "postcss public/stylesheets/tailwind.css -o public/stylesheets/style.css"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "autoprefixer": "^10.4.20",
+    "ejs": "^3.1.10",
+    "express": "^4.21.1",
+    "flyonui": "^1.1.0",
+    "postcss": "^8.4.47",
+    "postcss-cli": "^11.0.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.14"
+  }
+}
