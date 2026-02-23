@@ -1,0 +1,1784 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartucho - Web3 Emulator</title>
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <!-- Performance: Preconnect to IPFS Gateways -->
+    <link rel="preconnect" href="https://ipfs.io">
+    <link rel="preconnect" href="https://gateway.pinata.cloud">
+    <link rel="preconnect" href="https://cloudflare-ipfs.com">
+    <link rel="dns-prefetch" href="https://ipfs.io">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter, Silkscreen, and Orbitron for retro/sci-fi feel -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Silkscreen:wght@400;700&family=Orbitron:wght@400;700;900&family=Press+Start+2P&display=swap"
+        rel="stylesheet">
+    <!-- Alpine.js CDN -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'cartucho-dark': '#0a0a0c',
+                        'cartucho-sidebar': '#0f0f18', // Deepened
+                        'cartucho-primary': '#4f46e5', // Updated to match top bar
+                        'cartucho-accent': '#7c3aed',
+                        'cartucho-zinc': '#18181b',
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif'],
+                        'retro': ['Silkscreen', 'cursive'],
+                        'orbitron': ['Orbitron', 'sans-serif'],
+                        'arcade': ['"Press Start 2P"', 'cursive'],
+                    },
+                    backgroundImage: {
+                        'gradient-border': 'linear-gradient(to bottom right, rgba(255,255,255,0.2), rgba(255,255,255,0.05))',
+                        'neon-glow': 'radial-gradient(circle at center, rgba(79, 70, 229, 0.15) 0%, transparent 70%)',
+                    },
+                    boxShadow: {
+                        'neon': '0 0 20px rgba(79, 70, 229, 0.4)',
+                        'neon-glow': '0 0 40px rgba(79, 70, 229, 0.2)',
+                    },
+                    aspectRatio: {
+                        '4/3': '4 / 3',
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        /* Refined CRT Scanline Effect with RGB Shift */
+        .crt-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .crt-overlay::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background:
+                radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.3) 100%),
+                rgba(18, 16, 16, 0);
+            z-index: 11;
+            pointer-events: none;
+        }
+
+        .crt-flicker {
+            animation: flicker 0.1s infinite;
+        }
+
+        @keyframes flicker {
+            0% {
+                opacity: 0.97;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.98;
+            }
+        }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: rgba(24, 24, 43, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-hover:hover {
+            background: rgba(24, 24, 43, 0.9);
+            border-color: rgba(79, 70, 229, 0.3);
+            box-shadow: 0 0 20px rgba(79, 70, 229, 0.15);
+        }
+
+        /* Retro Boot Animation */
+        .boot-text {
+            font-family: 'Silkscreen', cursive;
+            color: #4f46e5;
+            text-shadow: 0 0 10px rgba(79, 70, 229, 0.5);
+            letter-spacing: 2px;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(79, 70, 229, 0.2);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(79, 70, 229, 0.4);
+        }
+
+        @keyframes loading {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                opacity: 0.5;
+                filter: blur(10px);
+            }
+
+            50% {
+                opacity: 0.8;
+                filter: blur(15px);
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #12121e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 10px;
+        }
+
+        /* Glass Effect */
+        .glass {
+            background: rgba(18, 18, 30, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Font Utilities */
+        .font-retro {
+            font-family: 'Silkscreen', cursive;
+        }
+
+        /* Gamepad Focus Style */
+        .gamepad-focus {
+            outline: none !important;
+            border-color: #4f46e5 !important;
+            box-shadow: 0 0 20px rgba(79, 70, 229, 0.6), inset 0 0 10px rgba(79, 70, 229, 0.2) !important;
+            transform: scale(1.02);
+            z-index: 50;
+            background: rgba(79, 70, 229, 0.1) !important;
+        }
+
+        .retro-card.gamepad-focus {
+            transform: scale(1.05);
+        }
+
+        @keyframes pulse-border {
+            0% {
+                border-color: rgba(79, 70, 229, 0.5);
+            }
+
+            50% {
+                border-color: rgba(79, 70, 229, 1);
+            }
+
+            100% {
+                border-color: rgba(79, 70, 229, 0.5);
+            }
+        }
+
+        .gamepad-focus-pulse {
+            animation: pulse-border 1.5s infinite;
+        }
+    </style>
+</head>
+
+<body class="bg-cartucho-dark text-slate-300 font-sans h-screen flex flex-col overflow-hidden" x-data="cartuchoApp()"
+    x-init="initData()">
+
+    <div x-show="copyFeedback" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 translate-y-4" x-cloak
+        class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+
+        <!-- Protocol Warning Banner -->
+        <template x-if="window.location.protocol === 'file:'">
+            <div
+                class="fixed top-0 left-0 right-0 bg-red-500/10 border-b border-red-500/20 px-4 py-2 flex items-center justify-center space-x-3 z-[200] backdrop-blur-md">
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="text-[9px] uppercase font-retro tracking-widest text-red-200">
+                    Modo_Offline: Saves Desativados. Use um servidor local (python -m http.server) para funcionalidade
+                    completa.
+                </span>
+            </div>
+        </template>
+        <div class="glass-panel px-6 py-3 rounded-2xl flex items-center space-x-3 shadow-2xl border-indigo-500/30">
+            <div class="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+            <span class="text-xs font-retro tracking-[0.2em] text-white uppercase">CARTUCHO_COPIED</span>
+        </div>
+    </div>
+
+    <div x-show="showGamepadToast" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 -translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-4" x-cloak
+        class="fixed top-6 right-6 z-[100] flex items-center space-x-3 bg-black/80 backdrop-blur-md border border-indigo-500/30 px-4 py-2 rounded-2xl shadow-neon-glow">
+        <div class="relative">
+            <div class="absolute inset-0 bg-indigo-500 animate-ping rounded-full opacity-20"></div>
+            <svg class="w-5 h-5 text-indigo-400 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5z" />
+            </svg>
+        </div>
+        <div class="flex flex-col">
+            <span class="text-[8px] font-retro text-white tracking-[0.2em] uppercase leading-none">Gamepad_Active</span>
+            <span class="text-[7px] text-slate-500 font-retro tracking-widest uppercase mt-1">Direct_Input_Linked</span>
+        </div>
+    </div>
+
+    <div x-show="showEjectToast" x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+        x-transition:leave-end="opacity-0 scale-95" x-cloak
+        class="fixed top-20 right-6 z-[100] flex items-center space-x-3 bg-red-900/80 backdrop-blur-md border border-red-500/50 px-4 py-3 rounded-2xl shadow-[0_0_20px_rgba(239,68,68,0.4)]">
+        <div class="relative">
+            <div class="absolute inset-0 bg-red-500 animate-ping rounded-full opacity-30"></div>
+            <svg class="w-5 h-5 text-red-400 relative z-10 animate-pulse" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+        </div>
+        <div class="flex flex-col">
+            <span class="text-[9px] font-retro text-white tracking-[0.2em] uppercase leading-none">Exiting_Game</span>
+            <span class="text-[7px] text-red-200 font-retro tracking-widest uppercase mt-1">Hold_To_Confirm...</span>
+        </div>
+    </div>
+
+
+    <!-- Mobile Header -->
+    <div class="lg:hidden flex items-center justify-between p-4 bg-cartucho-sidebar border-b border-white/10 z-50">
+        <span @click="if(isPlaying) { stopGame(); } else { activePage = 'Home'; }"
+            class="font-retro text-indigo-500 tracking-widest text-lg md:text-xl cursor-pointer">Cartucho<span
+                class="text-white">//IPFS</span></span>
+        <button @click="sidebarOpen = !sidebarOpen" class="text-white focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+        </button>
+    </div>
+
+    <div class="flex-1 flex min-h-0 relative">
+        <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+            class="fixed inset-y-0 left-0 z-50 w-72 glass-panel border-r border-white/5 flex flex-col lg:relative sidebar-transition">
+
+            <div
+                class="p-6 border-b border-white/5 flex items-center space-x-3 bg-gradient-to-br from-indigo-600/10 to-transparent">
+                <span @click="if(isPlaying) { stopGame(); } else { activePage = 'Home'; }"
+                    class="font-retro font-bold text-indigo-500 tracking-widest cursor-pointer hover:text-indigo-400 transition-colors">Cartucho<span
+                        class="text-white">//IPFS</span></span>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 overflow-y-auto p-4 space-y-2 mt-4">
+                <template x-for="item in menuItems" :key="item.name">
+                    <button
+                        @click="if(isPlaying) { stopGame(item.name); } else { activePage = item.name; if(window.innerWidth < 1024) sidebarOpen = false; }"
+                        :class="activePage === item.name ? 'bg-indigo-600/20 text-white border-indigo-500/50' : 'text-slate-500 hover:text-slate-300 border-transparent'"
+                        class="nav-item w-full text-left px-4 py-3 rounded-xl flex items-center justify-between transition-all duration-200 group relative border glass-hover">
+                        <div class="flex items-center space-x-3">
+                            <span x-html="item.icon"
+                                class="w-5 h-5 opacity-70 group-hover:opacity-100 group-hover:text-indigo-400 transition-all"></span>
+                            <span class="font-bold text-xs font-orbitron tracking-tight uppercase"
+                                x-text="item.name"></span>
+                        </div>
+                        <div x-show="activePage === item.name"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 h-2 w-2 bg-[#4f46e5] rounded-full shadow-neon">
+                        </div>
+                    </button>
+                </template>
+
+                <div class="pt-8 px-2 space-y-3">
+                    <label
+                        class="block text-[9px] font-retro text-slate-600 uppercase tracking-[0.2em] px-2 mb-2">Systems_Control</label>
+
+                    <button @click="showImportModal = true"
+                        class="nav-item w-full bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 font-retro text-[10px] tracking-widest py-3 px-4 rounded-xl border border-indigo-600/30 shadow-lg hover:shadow-indigo-600/10 transition-all flex items-center space-x-3 uppercase">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span>Add_Cartucho</span>
+                    </button>
+
+                    <button @click="showSettingsModal = true"
+                        class="nav-item w-full bg-slate-800/40 hover:bg-slate-800/60 text-slate-400 font-retro text-[10px] tracking-widest py-3 px-4 rounded-xl border border-white/5 transition-all flex items-center space-x-3 uppercase">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                        <span>Settings</span>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Sidebar Footer: Manage Library -->
+            <div class="p-4 border-t border-white/5 hidden lg:block">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest px-2 mb-3">Library Stats</h3>
+                <div class="px-2 py-1 space-y-1">
+                    <div class="flex justify-between text-[10px] font-bold">
+                        <span class="text-slate-500">Total Games</span>
+                        <span class="text-indigo-400" x-text="library.length"></span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Side: Top Bar + Main Content -->
+        <div class="flex-1 flex flex-col h-full overflow-hidden">
+
+            <!-- Main Content Area -->
+            <main :class="isPlaying ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto'"
+                class="bg-[#0a0a14] relative p-4 md:p-6 flex flex-col transition-all">
+
+                <!-- Search & Layout Header (Dashboard Top) -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-10"
+                    x-show="!isPlaying">
+                    <h1 class="text-xl md:text-2xl font-bold text-white font-retro tracking-[0.1em] uppercase opacity-90"
+                        x-text="activePage === 'Home' ? 'Library' : activePage"></h1>
+
+                    <div class="relative w-full max-w-sm group">
+                        <div
+                            class="absolute inset-0 bg-indigo-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                        </div>
+                        <input type="text" x-model="searchQuery" placeholder="Search data archives..."
+                            class="relative w-full glass-panel rounded-xl py-3 pl-11 pr-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all">
+                        <svg class="absolute left-4 top-3.5 h-4 w-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- DASHBOARD VIEW: Hero + Grid -->
+                <div x-show="!isPlaying" class="space-y-12">
+
+                    <div x-show="featuredGame"
+                        class="relative w-full h-[180px] md:h-[260px] rounded-[1.5rem] md:rounded-[2rem] overflow-hidden group shadow-2xl bg-[#0a0a14] border border-white/5">
+
+                        <!-- Side Image with Masked Gradient -->
+                        <div class="absolute right-0 top-0 bottom-0 w-[45%] z-0 overflow-hidden">
+                            <img :src="getMediaUrl(featuredGame?.screenshot || featuredGame?.cover) || 'https://placehold.co/1200x600?text=No+Media'"
+                                class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-1000"
+                                alt="Hero" fetchpriority="high" decoding="async">
+                            <!-- Horizontal Cinematic Mask -->
+                            <div
+                                class="absolute inset-0 bg-gradient-to-r from-[#0a0a14] via-[#0a0a14]/60 to-transparent">
+                            </div>
+                        </div>
+
+                        <!-- Left Content Area -->
+                        <div
+                            class="relative z-10 flex flex-col justify-center h-full px-6 md:px-12 space-y-2 md:space-y-4 max-w-2xl bg-gradient-to-r from-[#0a0a14] via-transparent to-transparent">
+                            <div class="flex items-center">
+                                <span
+                                    class="border border-indigo-500/50 text-indigo-400 px-3 py-0.5 rounded-md text-[8px] font-retro tracking-widest uppercase bg-indigo-500/10"
+                                    x-text="featuredGame?.system"></span>
+                            </div>
+
+                            <h2 class="text-xl md:text-3xl font-bold text-white leading-tight font-retro tracking-tight"
+                                x-text="featuredGame?.name">
+                            </h2>
+
+                            <p class="hidden sm:block text-slate-400 text-[10px] md:text-xs leading-relaxed line-clamp-2 md:line-clamp-3 opacity-90"
+                                x-text="featuredGame?.description"></p>
+
+                            <!-- Metadata Tags -->
+                            <div class="flex flex-wrap gap-2 pt-1"
+                                x-show="featuredGame?.maxPlayers || featuredGame?.genres">
+                                <span
+                                    class="bg-white/5 border border-white/10 text-white/70 px-2 py-0.5 rounded text-[9px] font-retro tracking-widest flex items-center space-x-1"
+                                    x-show="featuredGame?.maxPlayers">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                                        </path>
+                                    </svg>
+                                    <span x-text="featuredGame?.maxPlayers + ' Players'"></span>
+                                </span>
+                                <span
+                                    class="bg-white/5 border border-white/10 text-white/70 px-2 py-0.5 rounded text-[9px] font-retro tracking-widest"
+                                    x-show="featuredGame?.genres" x-text="featuredGame?.genres"></span>
+                            </div>
+
+                            <!-- Mini Action Bar -->
+                            <div class="flex items-center space-x-4 md:space-x-6 pt-2 md:pt-4">
+                                <!-- Play Button -->
+                                <button @click="loadGame(featuredGame)"
+                                    class="nav-item flex items-center space-x-3 group/btn hover:text-white transition-all">
+                                    <div
+                                        class="w-8 h-8 bg-white text-indigo-600 rounded-full flex items-center justify-center shadow-lg group-hover/btn:scale-110 transition-transform">
+                                        <svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M8 5v14l11-7z" />
+                                        </svg>
+                                    </div>
+                                    <span
+                                        class="text-[9px] font-bold uppercase tracking-widest text-slate-400 group-hover/btn:text-white">play
+                                        game</span>
+                                </button>
+
+                                <!-- Share Button (Copy CID) -->
+                                <button @click="shareCartucho(featuredGame)"
+                                    class="nav-item flex items-center space-x-3 group/btn hover:text-white transition-all">
+                                    <div
+                                        class="w-8 h-8 bg-white/10 text-white rounded-full flex items-center justify-center border border-white/20 group-hover/btn:border-white/40 transition-all">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                        </svg>
+                                    </div>
+                                    <span
+                                        class="text-[9px] font-bold uppercase tracking-widest text-slate-400 group-hover/btn:text-white">Share
+                                        Cartucho</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                        <template x-for="game in filteredLibrary" :key="game.cartucho">
+                            <div @click="loadGame(game)" class="nav-item group cursor-pointer retro-card">
+                                <div
+                                    class="relative aspect-[3/4] rounded-2xl overflow-hidden mb-3 border border-white/10 shadow-xl transition-all">
+                                    <img :src="getMediaUrl(game.cover) || 'https://placehold.co/300x400?text=ROM+ID'"
+                                        class="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700"
+                                        alt="Cover" loading="lazy" decoding="async">
+                                    <!-- Persistent Gradient Mask (Deeper and Taller) -->
+                                    <div
+                                        class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14]/60 to-transparent pointer-events-none">
+                                    </div>
+                                    <div
+                                        class="absolute inset-0 bg-gradient-to-t from-indigo-900/90 via-indigo-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <div
+                                            class="w-14 h-14 bg-white rounded-full flex items-center justify-center text-indigo-600 shadow-2xl scale-75 group-hover:scale-100 transition-all duration-500">
+                                            <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M8 5v14l11-7z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="absolute bottom-3 left-3 flex space-x-2">
+                                        <span
+                                            class="bg-indigo-600 text-white text-[8px] font-retro px-2 py-1 rounded shadow-neon"
+                                            x-text="game.system"></span>
+                                    </div>
+                                </div>
+                                <h4 class="text-sm font-bold text-white truncate group-hover:text-indigo-400 transition-colors font-orbitron tracking-tight"
+                                    x-text="game.name"></h4>
+                                <p class="text-[9px] text-slate-500 font-retro uppercase mt-1" x-text="game.system">
+                                </p>
+                            </div>
+                        </template>
+
+                        <!-- Empty State -->
+                        <div x-show="filteredLibrary.length === 0" class="col-span-full py-20 text-center space-y-4">
+                            <div class="text-6xl">🎮</div>
+                            <h3 class="text-xl font-bold text-slate-400">Your library is empty</h3>
+                            <p class="text-slate-600">Import a cartridge CID to fill your archive.</p>
+                            <button @click="showImportModal = true"
+                                class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-indigo-600/20 transition-all text-sm">Add
+                                First Game</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PLAYER VIEW: Emulator -->
+                <div x-show="isPlaying" class="w-full h-full flex flex-col min-h-0">
+                    <!-- Emulator Wrapper -->
+                    <div
+                        class="relative w-full flex-1 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] bg-black border border-white/10 group min-h-0">
+                        <div id="game-container" class="absolute inset-0 flex items-center justify-center text-white">
+                            <div class="crt-overlay crt-flicker"></div>
+
+                            <!-- Retro Boot Loading State -->
+                            <div class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/95 backdrop-blur-md"
+                                x-show="isEmulatorLoading">
+                                <div class="w-full max-w-md space-y-4 px-10">
+                                    <div class="boot-text text-xl animate-pulse">SYSTEM_BOOT_SEQUENCE</div>
+                                    <div class="space-y-1">
+                                        <div class="flex justify-between text-[10px] font-retro text-indigo-500/60">
+                                            <span>INITIALIZING_CORE</span>
+                                            <span x-text="currentGame?.system"></span>
+                                        </div>
+                                        <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                            <div class="h-full bg-indigo-500 animate-[loading_2s_ease-in-out_infinite]">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-[9px] font-retro text-slate-600 space-y-1">
+                                        <p>> MOUNTING_IPFS_GATEWAY...</p>
+                                        <p>> VERIFYING_ROM_INTEGRITY...</p>
+                                        <p>> LOADING_ASSETS...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Player Toolbar -->
+                    <div
+                        class="w-full mt-3 md:mt-8 p-3 md:p-4 glass-panel rounded-2xl flex items-center justify-between shrink-0">
+                        <div class="flex items-center space-x-3 md:space-x-6 text-slate-400 min-w-0">
+                            <button @click="stopGame(currentGame?.system || 'Home')"
+                                class="nav-item hover:text-white transition-all flex items-center space-x-2 group active:scale-95 shrink-0">
+                                <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                <span class="hidden sm:block text-xs font-retro tracking-widest uppercase">Eject</span>
+                            </button>
+                            <div class="h-8 w-px bg-white/10 shrink-0"></div>
+                            <div class="flex flex-col min-w-0">
+                                <h2 class="text-sm md:text-xl font-black text-white font-orbitron italic tracking-tighter leading-none truncate"
+                                    x-text="currentGame?.name || 'Loading...'"></h2>
+                                <span
+                                    class="text-[8px] md:text-[9px] font-retro text-indigo-400 uppercase tracking-[0.2em] mt-1 truncate"
+                                    x-text="currentGame?.system || 'CORE'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Player Controls -->
+                        <div class="flex items-center space-x-2 md:space-x-4 shrink-0">
+                            <!-- Share Button -->
+                            <button @click="shareCartucho(currentGame)"
+                                class="flex items-center space-x-2 md:space-x-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white px-3 py-2 md:px-5 md:py-2.5 rounded-xl border border-white/5 transition-all group active:scale-95">
+                                <svg class="h-4 w-4 group-hover:text-indigo-400 transition-colors" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                </svg>
+                                <span
+                                    class="text-[9px] md:text-[10px] font-retro tracking-widest uppercase truncate"><span
+                                        class="md:hidden">Share</span><span class="hidden md:inline">Share
+                                        Cartucho</span></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <!-- Import Modal (Redesigned with Scanner & Preview) -->
+        <div x-show="showImportModal" x-cloak
+            class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+            <div @click.away="resetImport()"
+                class="glass-panel w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl border-indigo-500/20 relative">
+
+                <!-- Close Button -->
+                <button @click="resetImport()"
+                    class="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors z-10">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+
+                <div
+                    class="px-8 pt-10 pb-6 border-b border-white/5 bg-gradient-to-br from-indigo-600/10 to-transparent">
+                    <h3 class="text-2xl font-black text-white font-orbitron tracking-tighter uppercase italic">
+                        Add_Cartucho</h3>
+                    <p class="text-slate-500 text-[10px] font-retro tracking-wider uppercase mt-2 opacity-80">
+                        Synchronizing with IPFS Network...</p>
+                </div>
+                <!-- Tab Switcher -->
+                <div x-show="!previewGame" class="flex p-2 bg-black/40 mx-8 mt-6 rounded-2xl border border-white/5">
+                    <button @click="importMode = 'scan'; startScanner()"
+                        class="flex-1 py-3 text-[10px] font-retro tracking-widest uppercase transition-all rounded-xl flex items-center justify-center space-x-2"
+                        :class="importMode === 'scan' ? 'bg-indigo-600 text-white shadow-neon' : 'text-slate-500 hover:text-slate-300'">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span>Camera</span>
+                    </button>
+                    <button @click="importMode = 'manual'; stopScanner()"
+                        class="flex-1 py-3 text-[10px] font-retro tracking-widest uppercase transition-all rounded-xl flex items-center justify-center space-x-2"
+                        :class="importMode === 'manual' ? 'bg-indigo-600 text-white shadow-neon' : 'text-slate-500 hover:text-slate-300'">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        <span>Manual</span>
+                    </button>
+                </div>
+
+                <div class="p-8 space-y-6">
+                    <!-- Scanner View -->
+                    <div x-show="importMode === 'scan' && !previewGame"
+                        class="relative overflow-hidden rounded-3xl bg-black/50 border border-white/10 aspect-video flex items-center justify-center">
+                        <div id="reader" class="w-full"></div>
+                        <div x-show="!html5QrCode?.isScanning"
+                            class="absolute inset-0 flex items-center justify-center bg-black/60">
+                            <span class="font-retro text-[10px] text-indigo-400">Initializing Core...</span>
+                        </div>
+                    </div>
+
+                    <!-- Manual View -->
+                    <div x-show="importMode === 'manual'" class="space-y-4">
+                        <label class="block text-[10px] font-retro text-slate-500 uppercase tracking-widest px-1">IPFS
+                            Cartucho_ID (CID)</label>
+                        <input type="text" x-model="newCID" @input.debounce.500ms="onManualInput()"
+                            placeholder="Qm... or bafy..."
+                            class="w-full bg-black/50 border border-white/10 rounded-2xl py-5 px-6 text-white placeholder-slate-700 focus:outline-none focus:border-indigo-500 transition-all font-mono text-sm">
+                    </div>
+
+                    <!-- Preview Section -->
+                    <div x-show="scanPending || previewGame" x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 translate-y-4"
+                        class="bg-indigo-600/10 border border-indigo-500/30 rounded-3xl p-6 relative group overflow-hidden">
+
+                        <!-- Loading State -->
+                        <div x-show="scanPending" class="flex flex-col items-center py-4 space-y-4">
+                            <div
+                                class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin">
+                            </div>
+                            <span
+                                class="font-retro text-[9px] text-indigo-400 tracking-widest uppercase">Fetching_Archive...</span>
+                        </div>
+
+                        <!-- Game Preview -->
+                        <div x-show="previewGame && !scanPending" class="flex items-start space-x-6">
+                            <div
+                                class="w-24 aspect-[3/4] rounded-xl overflow-hidden shadow-2xl border border-white/10 shrink-0">
+                                <img :src="previewGame?.cover || 'https://placehold.co/300x400?text=ROM'"
+                                    class="w-full h-full object-cover">
+                            </div>
+                            <div class="flex-1 min-w-0 py-1">
+                                <span
+                                    class="bg-indigo-600 text-white text-[8px] font-retro px-2 py-0.5 rounded uppercase tracking-tighter"
+                                    x-text="previewGame?.system"></span>
+                                <h4 class="text-lg font-bold text-white mt-2 truncate font-orbitron"
+                                    x-text="previewGame?.name"></h4>
+                                <p class="text-[10px] text-slate-500 font-retro uppercase mt-1 line-clamp-2"
+                                    x-text="previewGame?.description"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center space-x-4 pt-2">
+                        <button @click="resetImport()"
+                            class="flex-1 px-6 py-4 rounded-2xl text-slate-500 font-bold hover:bg-white/5 transition-all text-xs uppercase tracking-widest font-retro">Abort</button>
+                        <button @click="importCartucho()" :disabled="!newCID"
+                            :class="!newCID ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:scale-105 active:scale-95 shadow-lg shadow-indigo-600/20'"
+                            class="flex-[2] bg-indigo-600 text-white font-bold py-4 px-6 rounded-2xl transition-all text-xs uppercase tracking-widest font-retro flex items-center justify-center space-x-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>Insert_Cartucho</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="showShareModal" x-cloak
+            class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+            <div @click.away="showShareModal = false"
+                class="glass-panel w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border-indigo-500/20 relative">
+
+                <!-- Close Button -->
+                <button @click="showShareModal = false"
+                    class="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+
+                <div
+                    class="px-8 pt-10 pb-6 text-center border-b border-white/5 bg-gradient-to-b from-indigo-600/10 to-transparent">
+                    <h3 class="text-2xl font-black text-white font-orbitron tracking-tighter uppercase italic">
+                        Share_Cartucho</h3>
+                    <p class="text-indigo-400 text-[10px] font-retro tracking-widest uppercase mt-2 opacity-80"
+                        x-text="shareGame?.name"></p>
+                </div>
+
+                <div class="p-8 space-y-8 flex flex-col items-center">
+                    <!-- QR Code Wrapper -->
+                    <div class="relative group">
+                        <div
+                            class="absolute -inset-4 bg-indigo-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        </div>
+                        <div
+                            class="relative bg-white p-4 rounded-3xl shadow-2xl transform transition-transform duration-500 group-hover:scale-105">
+                            <div id="qrcode-container" class="w-[200px] h-[200px]"></div>
+                        </div>
+                    </div>
+
+                    <!-- Link Display & Copy -->
+                    <div class="w-full space-y-3">
+                        <div class="flex items-center justify-between px-2">
+                            <label
+                                class="text-[9px] font-retro text-slate-500 uppercase tracking-widest">Access_URL</label>
+                            <span class="text-[8px] font-mono text-indigo-400/50">WEB_LINK</span>
+                        </div>
+                        <div class="relative group">
+                            <input type="text" readonly :value="shareLink"
+                                class="w-full bg-black/60 border border-white/10 rounded-2xl py-4 pl-5 pr-14 text-white font-mono text-xs focus:outline-none focus:border-indigo-500/50 transition-all">
+                            <button @click="copyShareLink()"
+                                class="absolute right-2 top-2 bottom-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all active:scale-95 shadow-lg shadow-indigo-600/20">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Hint -->
+                <div class="px-8 pb-8 text-center pt-2">
+                    <p class="text-[8px] font-retro text-slate-600 uppercase tracking-[0.2em]">Scan QR Code to play
+                        instantly on mobile</p>
+                </div>
+            </div>
+        </div>
+        <div x-show="showSettingsModal" x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div @click.away="showSettingsModal = false"
+                class="bg-cartucho-sidebar border border-white/10 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl">
+                <div class="px-8 pt-8 pb-6 border-b border-white/5 bg-gradient-to-br from-indigo-600/10 to-transparent">
+                    <h3 class="text-2xl font-black text-white font-orbitron tracking-tighter uppercase italic">
+                        Settings</h3>
+                    <p class="text-slate-500 text-sm mt-2 font-retro text-[10px] tracking-wider uppercase opacity-80">
+                        Core configuration and library management.</p>
+                </div>
+
+                <div class="p-8 space-y-6">
+                    <div class="space-y-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest">Library
+                            Management</label>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <button @click="exportLibrary()"
+                                class="nav-item bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 font-bold py-4 px-6 rounded-xl border border-indigo-600/30 transition-all flex flex-col items-center space-y-2">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Export JSON</span>
+                            </button>
+
+                            <button @click="$refs.libraryInput.click()"
+                                class="nav-item bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 font-bold py-4 px-6 rounded-xl border border-indigo-600/30 transition-all flex flex-col items-center space-y-2">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                <span>Import JSON</span>
+                            </button>
+                        </div>
+                        <input type="file" x-ref="libraryInput" x-on:change="importLibrary" class="hidden"
+                            accept=".json">
+                    </div>
+
+                    <div class="space-y-4 pt-4 border-t border-white/5 text-slate-100">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest">IPFS
+                            Gateway</label>
+                        <div class="space-y-3">
+                            <input type="text" x-model="ipfsGateway" @keydown.enter="saveGateway()"
+                                placeholder="https://ipfs.io/ipfs/"
+                                class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-indigo-500/50 transition-all">
+
+                            <div class="flex gap-2">
+                                <button @click="saveGateway()"
+                                    class="nav-item flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-retro uppercase tracking-wider transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center space-x-2">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span>Save_Settings</span>
+                                </button>
+                                <button @click="ipfsGateway = 'https://ipfs.io/ipfs/'; saveGateway()"
+                                    class="nav-item px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-retro uppercase tracking-wider transition-all">
+                                    Reset
+                                </button>
+                            </div>
+                            <p class="text-[9px] text-slate-500 font-retro uppercase tracking-wider leading-relaxed">
+                                Use a custom gateway for faster loading. Default: https://ipfs.io/ipfs/
+                            </p>
+
+                            <!-- Gateway Health Section -->
+                            <div class="mt-4 pt-4 border-t border-white/5">
+                                <h4 class="text-[10px] font-retro uppercase text-indigo-400 mb-3 tracking-widest">
+                                    Gateway Health</h4>
+                                <div class="space-y-2 mb-4">
+                                    <template x-for="g in knownGateways" :key="g">
+                                        <div
+                                            class="flex items-center justify-between bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                                            <span class="text-[9px] text-slate-400 truncate max-w-[150px]"
+                                                x-text="g"></span>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="text-[9px] font-mono"
+                                                    :class="gatewayStatus[g] && gatewayStatus[g].includes('ms') ? 'text-green-400' : 'text-red-400'"
+                                                    x-text="gatewayStatus[g] || 'Ready'"></span>
+                                                <button @click="ipfsGateway = g; saveGateway()"
+                                                    class="p-1 hover:bg-white/10 rounded transition-colors"
+                                                    title="Use this gateway">
+                                                    <svg class="w-3 h-3 text-indigo-400" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                                <button @click="testGateways()"
+                                    class="w-full px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[9px] font-retro uppercase tracking-widest transition-all text-slate-400 hover:text-white">
+                                    Refresh_Health_Check
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-white/5 flex justify-end">
+                        <button @click="showSettingsModal = false"
+                            class="nav-item text-slate-500 hover:text-white font-bold transition-all">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EmulatorJS Config Initializing -->
+        <script>
+            var EJS_player = '#game-container';
+            var EJS_core = 'nes';
+            var EJS_gameUrl = '';
+            var EJS_gameID = '';
+            var EJS_gameName = '';
+            var EJS_backgroundImage = '';
+            var EJS_pathtodata = 'https://cdn.emulatorjs.org/latest/data/';
+            var EJS_language = navigator.language || 'en-US';
+            var EJS_disableAutoLang = true;
+            var EJS_cheats = [];
+            var EJS_biosUrl = '';
+            var EJS_backgroundColor = '#0a0a0c';
+            var EJS_color = '#4f46e5';
+            var EJS_startOnLoaded = true;
+            var EJS_defaultOptions = {
+                'save-state-location': 'browser',
+                'save-state-slot': 1
+            };
+            var EJS_saveStateLocation = 'browser';
+        </script>
+        <!-- The loader script will be added dynamically in loadGame() -->
+
+        <script>
+            function cartuchoApp() {
+                // EmulatorJS Supported Cores
+                const SUPPORTED_CORES = [
+                    'nes', 'snes', 'gb', 'gba', 'vb', 'nds', 'a5200', 'mame2003', 'arcade', 'psx', 'jaguar', 'lynx', 'segaSaturn', 'segaMD', 'segaGG', 'segaCD', 'n64', '3do', 'atari7800', 'atari2600', 'sega32x', 'segaMS', 'c64', 'c128', 'pet', 'plus4', 'vic20', 'amiga', 'coleco', 'pce', 'pcfx', 'ngp', 'ws', 'dos', 'psp'
+                ];
+
+                return {
+                    // Global State
+                    library: [],
+                    activePage: 'Home',
+                    sidebarOpen: false,
+                    isPlaying: false,
+                    isEmulatorLoading: false,
+                    currentGame: null,
+                    searchQuery: '',
+                    ipfsGateway: localStorage.getItem('cartucho_gateway') || 'https://ipfs.io/ipfs/',
+                    knownGateways: [
+                        'http://127.0.0.1:8080/ipfs/',
+                        'https://dweb.link/ipfs/',
+                        'https://gateway.pinata.cloud/ipfs/',
+                        'https://ipfs.io/ipfs/'
+                    ],
+                    gatewayStatus: {},
+                    showImportModal: false,
+                    showShareModal: false,
+                    showSettingsModal: false,
+
+                    // Gamepad State
+                    gamepadConnected: false,
+                    showGamepadToast: false,
+                    showEjectToast: false,
+                    focusIndex: -1,
+                    lastGamepadInput: 0,
+                    gamepadTimer: null,
+                    ejectTimerStart: null,
+                    cachedFocusElements: null,
+                    // Import State
+                    importMode: 'manual', // 'manual' or 'scan'
+                    scanPending: false,
+                    previewGame: null,
+                    html5QrCode: null,
+                    newCID: '', // This seems to be an import state variable
+                    copyFeedback: false,
+                    shareGame: null,
+
+                    getMediaUrl(cidOrUrl) {
+                        if (!cidOrUrl) return null;
+                        if (cidOrUrl.startsWith('http') || cidOrUrl.startsWith('blob:')) return cidOrUrl;
+                        return `${this.ipfsGateway}${cidOrUrl}`;
+                    },
+                    get shareLink() {
+                        if (!this.shareGame) return '';
+                        const cid = this.shareGame.cartucho;
+                        const origin = window.location.origin === 'null' ? '' : window.location.origin;
+                        return `${origin}${window.location.pathname}?cartucho=${cid}`;
+                    },
+                    get menuItems() {
+                        const base = [
+                            { name: 'Home', system: 'all', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>' }
+                        ];
+
+                        // Extract unique systems from library
+                        const systems = [...new Set(this.library.map(g => g.system))].filter(Boolean);
+
+                        systems.forEach(sys => {
+                            base.push({
+                                name: sys,
+                                system: sys,
+                                icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>' // Fallback gamepad icon
+                            });
+                        });
+
+                        return base;
+                    },
+
+                    initData() {
+                        const stored = localStorage.getItem('cartucho_library');
+                        if (stored) {
+                            try {
+                                this.library = JSON.parse(stored);
+                            } catch (e) {
+                                console.error("Could not parse library", e);
+                            }
+                        }
+
+                        // Set up Alpine execution watchers to invalidate the DOM focus cache
+                        this.$watch('showImportModal', () => { this.$nextTick(() => this.updateFocusCache()) });
+                        this.$watch('showShareModal', () => { this.$nextTick(() => this.updateFocusCache()) });
+                        this.$watch('showSettingsModal', () => { this.$nextTick(() => this.updateFocusCache()) });
+                        this.$watch('activePage', () => { this.$nextTick(() => this.updateFocusCache()) });
+                        this.$watch('library', () => { this.$nextTick(() => this.updateFocusCache()) });
+                        this.$watch('searchQuery', () => { this.$nextTick(() => this.updateFocusCache()) });
+
+                        // Ensure gateway ends with slash
+                        if (!this.ipfsGateway.endsWith('/')) this.ipfsGateway += '/';
+
+                        // Check for ?cartucho=CID query parameter
+                        const urlParams = new URLSearchParams(window.location.search);
+
+                        const page = urlParams.get('page');
+                        if (page && this.menuItems.some(i => i.name === page)) {
+                            this.activePage = page;
+                        }
+
+                        const initialCid = urlParams.get('cartucho');
+                        if (initialCid) {
+                            this.loadFromQuery(initialCid);
+                        }
+                        this.initGamepad();
+                    },
+
+                    initGamepad() {
+                        window.addEventListener("gamepadconnected", (e) => {
+                            // Only first gamepad controls the UI
+                            if (e.gamepad.index === 0) {
+                                console.log("Gamepad connected", e.gamepad.id);
+                                this.gamepadConnected = true;
+                                this.updateGamepadToast();
+                                this.startGamepadLoop();
+                            }
+                        });
+
+                        window.addEventListener("gamepaddisconnected", (e) => {
+                            if (e.gamepad.index === 0) {
+                                console.log("Gamepad disconnected", e.gamepad.id);
+                                this.gamepadConnected = false;
+                                this.stopGamepadLoop();
+                            }
+                        });
+
+                        // Handle visibility changes to throttle gamepad polling
+                        document.addEventListener("visibilitychange", () => {
+                            if (document.hidden) {
+                                this.stopGamepadLoop();
+                            } else if (this.gamepadConnected && !this.gamepadTimer) {
+                                this.startGamepadLoop();
+                            }
+                        });
+
+                        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+                        if (gamepads[0]) {
+                            this.gamepadConnected = true;
+                            this.updateGamepadToast();
+                            this.startGamepadLoop();
+                        }
+                    },
+
+                    startGamepadLoop() {
+                        if (this.gamepadTimer) return;
+                        this.gamepadLoop();
+                    },
+
+                    stopGamepadLoop() {
+                        if (this.gamepadTimer) {
+                            cancelAnimationFrame(this.gamepadTimer);
+                            this.gamepadTimer = null;
+                        }
+                        const focused = document.querySelector('.gamepad-focus');
+                        if (focused) focused.classList.remove('gamepad-focus');
+                        this.focusIndex = -1;
+                    },
+
+                    gamepadLoop() {
+                        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+                        const gp = gamepads[0];
+
+                        if (gp) {
+                            if (!this.isPlaying) {
+                                this.handleGamepadInput(gp);
+                            } else {
+                                this.handleEjectShortcut(gp);
+                            }
+                        }
+
+                        this.gamepadTimer = requestAnimationFrame(() => this.gamepadLoop());
+                    },
+
+                    handleEjectShortcut(gp) {
+                        const startPressed = gp.buttons[9]?.pressed;
+                        const dpadUp = gp.buttons[12]?.pressed;
+
+                        // Check analog stick Y (axis 1)
+                        const stickY = gp.axes.length > 1 ? gp.axes[1] : 0;
+                        const upPressed = dpadUp || stickY < -0.5;
+
+                        if (startPressed && upPressed) {
+                            if (!this.ejectTimerStart) {
+                                this.ejectTimerStart = Date.now();
+                                this.showEjectToast = true;
+                            } else if (Date.now() - this.ejectTimerStart >= 3000) {
+                                // 3 seconds passed
+                                this.ejectTimerStart = null;
+                                this.showEjectToast = false;
+                                this.stopGame(this.currentGame.system);
+                            }
+                        } else {
+                            this.ejectTimerStart = null;
+                            this.showEjectToast = false;
+                        }
+                    },
+
+                    handleGamepadInput(gp) {
+                        const now = Date.now();
+                        if (now - this.lastGamepadInput < 180) return;
+
+                        const dpadUp = gp.buttons[12]?.pressed;
+                        const dpadDown = gp.buttons[13]?.pressed;
+                        const dpadLeft = gp.buttons[14]?.pressed;
+                        const dpadRight = gp.buttons[15]?.pressed;
+
+                        const stickX = gp.axes[0];
+                        const stickY = gp.axes[1];
+                        const deadzone = 0.5;
+
+                        if (dpadUp || stickY < -deadzone) {
+                            this.updateFocus('up');
+                            this.lastGamepadInput = now;
+                        } else if (dpadDown || stickY > deadzone) {
+                            this.updateFocus('down');
+                            this.lastGamepadInput = now;
+                        } else if (dpadLeft || stickX < -deadzone) {
+                            this.updateFocus('left');
+                            this.lastGamepadInput = now;
+                        } else if (dpadRight || stickX > deadzone) {
+                            this.updateFocus('right');
+                            this.lastGamepadInput = now;
+                        }
+
+                        if (gp.buttons[0].pressed) { // A
+                            this.clickFocusedElement();
+                            this.lastGamepadInput = now;
+                        } else if (gp.buttons[1].pressed) { // B
+                            this.goBack();
+                            this.lastGamepadInput = now;
+                        }
+                    },
+
+                    getFocusableElements() {
+                        // Use cached elements to prevent massive CPU spikes on every D-pad input
+                        if (this.cachedFocusElements && this.cachedFocusElements.length > 0) {
+                            return this.cachedFocusElements.filter(el => el.offsetParent !== null);
+                        }
+                        this.updateFocusCache();
+                        return this.cachedFocusElements.filter(el => el.offsetParent !== null);
+                    },
+
+                    updateFocusCache() {
+                        let elements = [];
+                        if (this.showShareModal) {
+                            elements = Array.from(document.querySelectorAll('.fixed[x-show="showShareModal"] .nav-item'));
+                        } else if (this.showImportModal) {
+                            elements = Array.from(document.querySelectorAll('.fixed[x-show="showImportModal"] .nav-item'));
+                        } else if (this.showSettingsModal) {
+                            elements = Array.from(document.querySelectorAll('.fixed[x-show="showSettingsModal"] .nav-item'));
+                        } else {
+                            elements = Array.from(document.querySelectorAll('.nav-item')).filter(el => {
+                                // Only main nav or main grid items when no modal is open
+                                return el.closest('nav') || el.closest('main');
+                            });
+                        }
+                        this.cachedFocusElements = elements;
+                        // Reset focus index if elements change significantly to avoid out of bounds
+                        if (this.focusIndex >= elements.length) {
+                            this.focusIndex = -1;
+                        }
+                    },
+
+                    updateFocus(dir) {
+                        const elements = this.getFocusableElements();
+                        if (elements.length === 0) return;
+
+                        if (this.focusIndex === -1) {
+                            this.focusIndex = 0;
+                        } else {
+                            if (dir === 'down' || dir === 'right') {
+                                this.focusIndex = (this.focusIndex + 1) % elements.length;
+                            } else {
+                                this.focusIndex = (this.focusIndex - 1 + elements.length) % elements.length;
+                            }
+                        }
+
+                        elements.forEach((el, idx) => {
+                            if (idx === this.focusIndex) {
+                                el.classList.add('gamepad-focus');
+                                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                // Accessibility: focus the element
+                                if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'INPUT') {
+                                    el.focus({ preventScroll: true }); // Prevent jumping since we scrollIntoView smoothly
+                                }
+                            } else {
+                                el.classList.remove('gamepad-focus');
+                            }
+                        });
+                    },
+
+                    clickFocusedElement() {
+                        const elements = this.getFocusableElements();
+                        if (this.focusIndex >= 0 && elements[this.focusIndex]) {
+                            elements[this.focusIndex].click();
+                        }
+                    },
+
+                    goBack() {
+                        if (this.showShareModal) this.showShareModal = false;
+                        else if (this.showImportModal) this.resetImport();
+                        else if (this.showSettingsModal) this.showSettingsModal = false;
+                        else if (this.isPlaying) this.stopGame();
+                        else this.activePage = 'Home';
+                    },
+
+                    async loadFromQuery(cid) {
+                        this.isEmulatorLoading = true;
+                        try {
+                            // Check if game is already in library to avoid redundant fetching
+                            let game = this.library.find(g => g.cartucho === cid);
+
+                            if (!game) {
+                                const response = await fetch(`${this.ipfsGateway}${cid}`);
+                                if (!response.ok) throw new Error("Failed to fetch Cartucho JSON");
+                                const contentType = response.headers.get('content-type');
+
+                                if (contentType && contentType.includes('application/json')) {
+                                    const data = await response.json();
+                                    const validatedGame = this.validateCartuchoJSON(data, cid);
+                                    if (validatedGame) {
+                                        game = validatedGame;
+                                    } else {
+                                        return; // Validation failed (already alerted)
+                                    }
+                                } else {
+                                    alert("Invalid Cartucho format. Expected JSON.");
+                                    return;
+                                }
+
+                                // Add to library if it was successfully fetched and validated
+                                this.library.unshift(game);
+                                localStorage.setItem('cartucho_library', JSON.stringify(this.library));
+                            }
+                            this.loadGame(game);
+                        } catch (e) {
+                            console.error("Failed to load game from query param", e);
+                            alert("Failed to load Cartucho from URL parameter.");
+                        } finally {
+                            this.isEmulatorLoading = false;
+                        }
+                    },
+
+                    validateCartuchoJSON(data, cartuchoCid) {
+                        // Required fields: name, system, rom or rom_cid
+                        const romCid = data.rom_cid || data.rom;
+                        if (!data.name || !data.system || !romCid) {
+                            alert("Invalid Cartucho JSON: Missing required fields (name, system, rom_cid ou rom).");
+                            return null;
+                        }
+
+                        if (!SUPPORTED_CORES.includes(data.system)) {
+                            alert(`Invalid Cartucho JSON: System core '${data.system}' is not supported.`);
+                            return null;
+                        }
+
+                        // Normalize object for library
+                        return {
+                            cartucho: cartuchoCid, // The JSON CID is the Cartucho explicitly
+                            name: data.name,
+                            system: data.system,
+                            rom: romCid, // Store ROM CID here
+                            cover: data.media?.cover || data.cover || null,
+                            screenshot: data.media?.screenshot || data.screenshot || null,
+                            box3d: data.media?.box3d || data.box3d || null,
+                            description: data.description || '',
+                            maxPlayers: data.MaxPlayers || null,
+                            genres: data.Genres || null,
+                            version: data.version || '1.0',
+                            dateAdded: new Date().toISOString(),
+                            cheats: data.cheats || []
+                        };
+                    },
+
+                    get filteredLibrary() {
+                        let list = [...this.library];
+                        const activeSystem = this.menuItems.find(i => i.name === this.activePage)?.system;
+
+                        if (activeSystem && activeSystem !== 'all') {
+                            list = list.filter(game => game.system === activeSystem);
+                        }
+
+                        if (this.searchQuery) {
+                            list = list.filter(game =>
+                                game.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+                            );
+                        }
+
+                        // Sort by lastPlayed (descending) then by dateAdded
+                        return list.sort((a, b) => {
+                            const timeA = new Date(a.lastPlayed || a.dateAdded).getTime();
+                            const timeB = new Date(b.lastPlayed || b.dateAdded).getTime();
+                            return timeB - timeA;
+                        });
+                    },
+
+                    get featuredGame() {
+                        const list = this.filteredLibrary;
+                        if (list.length === 0) return null;
+
+                        // Priority 1: Last played game in the current context
+                        const played = list.filter(g => g.lastPlayed)
+                            .sort((a, b) => new Date(b.lastPlayed) - new Date(a.lastPlayed));
+
+                        if (played.length > 0) return played[0];
+
+                        // Priority 2: Fallback to most recently added
+                        return list[0];
+                    },
+
+                    async loadGame(game) {
+                        // If a game is already playing or EmulatorJS is already loaded in the DOM,
+                        // the most stable way to load a NEW game is a full page reload with the new ?cartucho=CID
+                        // because WebAssembly modules and Emscripten states cannot be fully flushed reliably from memory.
+                        if (window.EJS_load && this.isPlaying && this.currentGame.cartucho !== game.cartucho) {
+                            window.location.href = `/?cartucho=${game.cartucho}`;
+                            return;
+                        }
+
+                        this.isPlaying = true;
+                        this.isEmulatorLoading = true;
+                        this.currentGame = game;
+
+                        // Update lastPlayed
+                        const index = this.library.findIndex(g => g.cartucho === game.cartucho);
+                        if (index !== -1) {
+                            this.library[index].lastPlayed = new Date().toISOString();
+                            localStorage.setItem('cartucho_library', JSON.stringify(this.library));
+                        }
+
+                        let gatewayUrl = `${this.ipfsGateway}${game.rom}`;
+
+                        // Smart Fetch: Check if the ROM is reachable, if not, try fallbacks
+                        this.isEmulatorLoading = true;
+                        try {
+                            const fastGateway = await this.smartFetchROM(game.rom);
+                            if (fastGateway) {
+                                gatewayUrl = `${fastGateway}${game.rom}`;
+                                console.log("Using optimized gateway:", fastGateway);
+                            }
+                        } catch (e) {
+                            console.warn("Smart fetch failed, falling back to default", e);
+                        }
+
+                        // Change URL to reflect current game ?cartucho=CID
+                        const url = new URL(window.location);
+                        url.searchParams.set('cartucho', game.cartucho);
+                        window.history.replaceState({}, '', url);
+
+                        // Configure EmulatorJS
+                        window.EJS_player = '#game-container';
+                        window.EJS_gameUrl = gatewayUrl;
+                        window.EJS_gameID = game.cartucho;
+                        window.EJS_gameName = game.name;
+                        window.EJS_backgroundImage = this.getMediaUrl(game.cover);
+                        window.EJS_core = game.system || 'nes';
+
+                        // Handle language fallback (e.g. pt-BR -> pt -> en-US)
+                        const rawLang = navigator.language || 'en-US';
+                        const shortLang = rawLang.split('-')[0];
+                        const supportedCDN = ['en', 'pt', 'es', 'fr', 'de', 'it', 'zh', 'ja', 'ko'];
+
+                        window.EJS_language = supportedCDN.includes(rawLang) ? rawLang :
+                            (supportedCDN.includes(shortLang) ? shortLang : 'en');
+
+                        window.EJS_disableAutoLang = true;
+                        window.EJS_cheats = game.cheats || [];
+                        window.EJS_startOnLoaded = true;
+
+                        // Save Configuration
+                        window.EJS_saveStateLocation = 'browser';
+                        window.EJS_defaultOptions = {
+                            "save-state-location": "browser",
+                            "save-state-slot": 1
+                        };
+
+                        // Give DOM time to update before loading
+                        setTimeout(() => {
+                            if (window.EJS_load) {
+                                // If it already exists but we are NOT switching games (or it's the first click)
+                                try {
+                                    window.EJS_load();
+                                } catch (e) {
+                                    console.error("EJS_load error", e);
+                                    window.location.href = `/?cartucho=${game.cartucho}`;
+                                }
+                                this.isEmulatorLoading = false;
+                            } else {
+                                if (!document.getElementById('ejs-loader')) {
+                                    const script = document.createElement('script');
+                                    script.id = 'ejs-loader';
+                                    script.src = 'https://cdn.emulatorjs.org/latest/data/loader.js';
+                                    script.async = true;
+                                    script.onload = () => {
+                                        if (window.EJS_load) {
+                                            window.EJS_load();
+                                            this.isEmulatorLoading = false;
+                                        }
+                                    };
+                                    document.body.appendChild(script);
+                                } else {
+                                    // Script exists but EJS_load is not yet available, poll briefly
+                                    let attempts = 0;
+                                    const poll = setInterval(() => {
+                                        attempts++;
+                                        if (window.EJS_load) {
+                                            window.EJS_load();
+                                            this.isEmulatorLoading = false;
+                                            clearInterval(poll);
+                                        } else if (attempts > 20) {
+                                            clearInterval(poll);
+                                            this.isEmulatorLoading = false;
+                                        }
+                                    }, 100);
+                                }
+                            }
+                        }, 50);
+                    },
+
+                    stopGame(targetPage = 'Home') {
+                        // The cleanest way to stop WebAssembly emulators and free memory
+                        // is to reload the window. We pass the desired page to persist state.
+                        const url = new URL(window.location.origin + window.location.pathname);
+                        if (targetPage !== 'Home') {
+                            url.searchParams.set('page', targetPage);
+                        }
+                        window.location.href = url.toString();
+                    },
+
+                    async startScanner() {
+                        this.importMode = 'scan';
+                        this.$nextTick(() => {
+                            if (!this.html5QrCode) {
+                                this.html5QrCode = new Html5Qrcode("reader");
+                            }
+                            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                            this.html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+                                this.onScanSuccess(decodedText);
+                            }).catch(err => {
+                                console.error("Scanner start error", err);
+                                alert("Erro ao acessar a câmera. Verifique as permissões.");
+                                this.importMode = 'manual';
+                            });
+                        });
+                    },
+
+                    async stopScanner() {
+                        if (this.html5QrCode && this.html5QrCode.isScanning) {
+                            await this.html5QrCode.stop();
+                        }
+                    },
+
+                    resetImport() {
+                        this.stopScanner();
+                        this.newCID = '';
+                        this.previewGame = null;
+                        this.scanPending = false;
+                        this.showImportModal = false;
+                    },
+
+                    saveGateway() {
+                        if (!this.ipfsGateway.endsWith('/')) this.ipfsGateway += '/';
+                        localStorage.setItem('cartucho_gateway', this.ipfsGateway);
+                        this.copyFeedback = true; // Use toast for feedback
+                        setTimeout(() => this.copyFeedback = false, 2000);
+                    },
+
+                    onScanSuccess(text) {
+                        const cid = this.extractCID(text);
+                        if (cid) {
+                            this.stopScanner();
+                            this.newCID = cid;
+                            this.fetchPreview(cid);
+                        }
+                    },
+
+                    onManualInput() {
+                        const cid = this.extractCID(this.newCID);
+                        if (cid) {
+                            this.newCID = cid;
+                            this.fetchPreview(cid);
+                        }
+                    },
+
+                    extractCID(text) {
+                        // 1. Prioritize manual search for ?cartucho= parameter (works for malformed local URLs)
+                        if (text.includes('cartucho=')) {
+                            const match = text.match(/[?&]cartucho=([^&?#\s"']+)/);
+                            if (match && match[1]) return this.sanitizeCID(match[1]);
+                        }
+
+                        // 2. Try to parse as URL for other parameters (future-proofing)
+                        try {
+                            const url = new URL(text);
+                            const params = new URLSearchParams(url.search);
+                            const cartucho = params.get('cartucho');
+                            if (cartucho) return this.sanitizeCID(cartucho);
+                        } catch (e) {
+                            // Silently continue to regex
+                        }
+
+                        return this.sanitizeCID(text);
+                    },
+
+                    sanitizeCID(text) {
+                        if (!text) return null;
+                        // 3. Strict Regex for CID v0 or v1
+                        // Qm... (v0) or b.../B.../z.../F... (v1 base32/base58/base64)
+                        const cidRegex = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/;
+
+                        // Extract just the CID part if it was mixed with other string junk, but enforce validation
+                        const looseMatch = text.match(/(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})/);
+
+                        if (looseMatch && cidRegex.test(looseMatch[0])) {
+                            return looseMatch[0];
+                        }
+                        return null;
+                    },
+
+                    async fetchPreview(input) {
+                        const cid = this.extractCID(input);
+                        if (!cid) {
+                            // Invalid CID format, abort early
+                            return;
+                        }
+
+                        this.scanPending = true;
+                        this.previewGame = null;
+
+                        try {
+                            const response = await fetch(`${this.ipfsGateway}${cid}`);
+                            if (!response.ok) throw new Error("Not found");
+                            const contentType = response.headers.get('content-type');
+
+                            if (contentType && contentType.includes('application/json')) {
+                                const data = await response.json();
+                                // Basic validation for preview
+                                if (data.name && data.system && (data.rom || data.rom_cid)) {
+                                    this.previewGame = {
+                                        cartucho: cid,
+                                        name: data.name,
+                                        system: data.system,
+                                        cover: data.media?.cover || data.cover || null,
+                                        description: data.description || ''
+                                    };
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Preview fetch failed", e);
+                        } finally {
+                            this.scanPending = false;
+                        }
+                    },
+
+                    async importCartucho() {
+                        const rawCid = this.newCID.trim();
+                        const cid = this.extractCID(rawCid);
+
+                        if (!cid) {
+                            alert("Cópia de segurança inválida. O formato do CID está incorreto.");
+                            return;
+                        }
+
+                        // Check if game already exists in library
+                        const existingGame = this.library.find(g => (g.cartucho || g.cid) === cid);
+                        if (existingGame) {
+                            this.loadGame(existingGame);
+                            this.resetImport();
+                            return;
+                        }
+
+                        this.isEmulatorLoading = true;
+                        try {
+                            // If we already have a preview, we can use it (or fetch it if not exists)
+                            let gameData;
+                            if (this.previewGame && this.previewGame.cid === cid) {
+                                // Optimization: we already fetched it for preview
+                                const response = await fetch(`${this.ipfsGateway}${cid}`);
+                                gameData = await response.json();
+                            } else {
+                                const response = await fetch(`${this.ipfsGateway}${cid}`);
+                                if (!response.ok) throw new Error("Failed to fetch");
+                                gameData = await response.json();
+                            }
+
+                            const validatedGame = this.validateCartuchoJSON(gameData, cid);
+                            if (validatedGame) {
+                                // Add to library if not exists
+                                if (!this.library.find(g => g.cartucho === cid)) {
+                                    this.library.unshift(validatedGame);
+                                    localStorage.setItem('cartucho_library', JSON.stringify(this.library));
+
+                                    // Success feedback
+                                    this.copyFeedback = true; // Reusing this for general "Success" toast
+                                    setTimeout(() => this.copyFeedback = false, 3000);
+                                }
+
+                                this.loadGame(validatedGame);
+                                this.resetImport();
+                            }
+                        } catch (e) {
+                            console.error("Import failed", e);
+                            alert("Falha ao importar cartucho. Verifique o CID.");
+                        } finally {
+                            this.isEmulatorLoading = false;
+                        }
+                    },
+
+                    deleteGame(cartucho) {
+                        this.library = this.library.filter(g => g.cartucho !== cartucho);
+                        localStorage.setItem('cartucho_library', JSON.stringify(this.library));
+                    },
+
+                    exportLibrary() {
+                        const data = JSON.stringify(this.library, null, 2);
+                        const blob = new Blob([data], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `cartucho-library-${new Date().toISOString().split('T')[0]}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    },
+
+                    importLibrary(event) {
+                        const file = event.target.files[0];
+                        if (!file) return;
+
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            try {
+                                const imported = JSON.parse(e.target.result);
+                                if (Array.isArray(imported)) {
+                                    // Merge without duplicates based on cartucho field
+                                    const currentCids = new Set(this.library.map(g => g.cartucho).filter(Boolean));
+                                    const newGames = imported.filter(g => {
+                                        const newCid = g.cartucho || g.cid; // Support legacy 'cid' in import for backward compatibility
+                                        return newCid && !currentCids.has(newCid);
+                                    });
+                                    this.library = [...newGames, ...this.library];
+                                    localStorage.setItem('cartucho_library', JSON.stringify(this.library));
+                                    alert(`Imported ${newGames.length} new games!`);
+                                    this.showSettingsModal = false;
+                                }
+                            } catch (err) {
+                                alert("Invalid JSON file");
+                            }
+                        };
+                        reader.readAsText(file);
+                    },
+
+                    async shareCartucho(game) {
+                        this.shareGame = game;
+                        this.showShareModal = true;
+
+                        // Wait for modal to render before generating QR
+                        this.$nextTick(() => {
+                            this.generateQRCode();
+                        });
+                    },
+
+                    generateQRCode() {
+                        const container = document.getElementById('qrcode-container');
+                        if (!container) return;
+
+                        // Clear previous QR code
+                        container.innerHTML = '';
+
+                        new QRCode(container, {
+                            text: this.shareLink,
+                            width: 200,
+                            height: 200,
+                            colorDark: "#4f46e5",
+                            colorLight: "transparent",
+                            correctLevel: QRCode.CorrectLevel.H
+                        });
+                    },
+
+                    async copyShareLink() {
+                        try {
+                            await navigator.clipboard.writeText(this.shareLink);
+                            this.copyFeedback = true;
+                            setTimeout(() => {
+                                this.copyFeedback = false;
+                            }, 3000);
+                        } catch (err) {
+                            console.error('Failed to copy', err);
+                        }
+                    },
+
+                    updateGamepadToast() {
+                        this.showGamepadToast = true;
+                        if (this.gamepadToastTimer) clearTimeout(this.gamepadToastTimer);
+                        this.gamepadToastTimer = setTimeout(() => {
+                            this.showGamepadToast = false;
+                        }, 4000);
+                    },
+
+                    async smartFetchROM(cid) {
+                        // We try the current gateway and local node in parallel
+                        const testCids = [this.ipfsGateway, 'http://127.0.0.1:8080/ipfs/'];
+                        const controllers = [];
+
+                        const fetchWithTimeout = async (baseUrl) => {
+                            const controller = new AbortController();
+                            controllers.push(controller);
+                            const timeoutId = setTimeout(() => controller.abort(), 5000);
+                            try {
+                                const resp = await fetch(`${baseUrl}${cid}`, { method: 'HEAD', signal: controller.signal });
+                                clearTimeout(timeoutId);
+                                return resp.ok ? baseUrl : null;
+                            } catch (e) {
+                                return null;
+                            }
+                        };
+
+                        // 1. Try Primary and Local first
+                        const firstRound = await Promise.any(testCids.map(fetchWithTimeout).filter(Boolean).map(p => p.then(v => v || Promise.reject())));
+                        if (firstRound) {
+                            controllers.forEach(c => c.abort());
+                            return firstRound;
+                        }
+
+                        // 2. Fallback to others if needed
+                        const fallbacks = this.knownGateways.filter(g => !testCids.includes(g));
+                        return await Promise.any(fallbacks.map(fetchWithTimeout).filter(Boolean).map(p => p.then(v => v || Promise.reject()))).catch(() => null);
+                    },
+
+                    async testGateways() {
+                        this.gatewayStatus = {};
+                        for (const g of this.knownGateways) {
+                            const start = Date.now();
+                            try {
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                                await fetch(`${g}QmUNLLsP2SNsqp9XiX2C9S4Gshm24523G97unG58D8KqzM`, { method: 'HEAD', signal: controller.signal });
+                                clearTimeout(timeoutId);
+                                this.gatewayStatus[g] = `${Date.now() - start}ms`;
+                            } catch (e) {
+                                this.gatewayStatus[g] = 'Timeout/Error';
+                            }
+                        }
+                    }
+                }
+            }
+        </script>
+</body>
+
+</html>
