@@ -12,8 +12,8 @@
     <link rel="preconnect" href="https://gateway.pinata.cloud">
     <link rel="preconnect" href="https://cloudflare-ipfs.com">
     <link rel="dns-prefetch" href="https://ipfs.io">
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (Fixed version to avoid production warnings) -->
+    <script src="https://cdn.tailwindcss.com/3.4.15"></script>
     <!-- Google Fonts: Inter, Silkscreen, and Orbitron for retro/sci-fi feel -->
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Silkscreen:wght@400;700&family=Orbitron:wght@400;700;900&family=Press+Start+2P&display=swap"
@@ -568,6 +568,8 @@
                                         <p>> MOUNTING_IPFS_GATEWAY...</p>
                                         <p>> VERIFYING_ROM_INTEGRITY...</p>
                                         <p>> LOADING_ASSETS...</p>
+                                        <p class="text-indigo-400/80 animate-pulse">> CONNECTED_VIA: <span
+                                                x-text="activeGatewayName || 'SECURE_TUNNEL'"></span></p>
                                     </div>
                                 </div>
                             </div>
@@ -942,6 +944,7 @@
                     // Global State
                     library: [],
                     activePage: 'Home',
+                    activeGatewayName: '',
                     sidebarOpen: false,
                     isPlaying: false,
                     isEmulatorLoading: false,
@@ -951,7 +954,10 @@
                     knownGateways: [
                         'https://gateway.pinata.cloud/ipfs/',
                         'https://cloudflare-ipfs.com/ipfs/',
+                        'https://nftstorage.link/ipfs/',
                         'https://dweb.link/ipfs/',
+                        'https://cf-ipfs.com/ipfs/',
+                        'https://storry.tv/ipfs/',
                         'https://ipfs.io/ipfs/',
                         'http://127.0.0.1:8080/ipfs/'
                     ],
@@ -1375,6 +1381,7 @@
                             const fastGateway = await this.smartFetchROM(game.rom);
                             if (fastGateway) {
                                 gatewayUrl = `${fastGateway}${game.rom}`;
+                                this.activeGatewayName = new URL(fastGateway).hostname.toUpperCase();
                                 console.log("Using optimized gateway:", fastGateway);
                             }
                         } catch (e) {
@@ -1767,7 +1774,9 @@
                             return winner;
                         } catch (e) {
                             console.warn("All smart gateways failed or blocked. Using default storage.", e);
-                            return isHttps ? 'https://ipfs.io/ipfs/' : 'http://127.0.0.1:8080/ipfs/';
+                            const fallback = isHttps ? 'https://ipfs.io/ipfs/' : 'http://127.0.0.1:8080/ipfs/';
+                            this.activeGatewayName = isHttps ? 'IPFS_IO (FALLBACK)' : 'LOCAL_KUBO';
+                            return fallback;
                         }
                     },
 
