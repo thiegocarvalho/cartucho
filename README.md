@@ -7,8 +7,7 @@
 ## 🚀 Play Now
 
 Experience the decentralized arcade directly in your browser:  
-👉 **[Play Cartucho IPFS on GitHub Pages](https://your-username.github.io/CartuchoIPFS/)**  
-*(Replace with your actual GitHub Pages URL once deployed)*
+👉 **[Play Cartucho IPFS on GitHub Pages](https://thiegocarvalho.github.io/cartucho/)**  
 
 ## 🧠 How It Works: The Decentralized Arcade
 
