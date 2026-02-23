@@ -23,6 +23,9 @@
     <!-- QR Code Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- Favicon: Transparent pixel to avoid 404 -->
+    <link rel="icon"
+        href="data:image/x-icon;base64,AAABAAEAAQEAAAEAIAAwAAAAFgAAACgAAAABAAAAAgAAAAEAIAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAA">
     <script>
         tailwind.config = {
             theme: {
@@ -946,10 +949,11 @@
                     searchQuery: '',
                     ipfsGateway: localStorage.getItem('cartucho_gateway') || 'https://ipfs.io/ipfs/',
                     knownGateways: [
-                        'http://127.0.0.1:8080/ipfs/',
-                        'https://dweb.link/ipfs/',
                         'https://gateway.pinata.cloud/ipfs/',
-                        'https://ipfs.io/ipfs/'
+                        'https://cloudflare-ipfs.com/ipfs/',
+                        'https://dweb.link/ipfs/',
+                        'https://ipfs.io/ipfs/',
+                        'http://127.0.0.1:8080/ipfs/'
                     ],
                     gatewayStatus: {},
                     showImportModal: false,
@@ -1732,33 +1736,39 @@
                     },
 
                     async smartFetchROM(cid) {
-                        // We try the current gateway and local node in parallel
-                        const testCids = [this.ipfsGateway, 'http://127.0.0.1:8080/ipfs/'];
-                        const controllers = [];
+                        const isHttps = window.location.protocol === 'https:';
 
+                        // Filter out HTTP gateways if on HTTPS to avoid Mixed Content (ERR_BLOCKED_BY_CLIENT)
+                        const testGateways = this.knownGateways.filter(g => {
+                            if (isHttps && g.startsWith('http:')) return false;
+                            return true;
+                        });
+
+                        const controllers = [];
                         const fetchWithTimeout = async (baseUrl) => {
                             const controller = new AbortController();
                             controllers.push(controller);
-                            const timeoutId = setTimeout(() => controller.abort(), 5000);
+                            const timeoutId = setTimeout(() => controller.abort(), 4000);
                             try {
                                 const resp = await fetch(`${baseUrl}${cid}`, { method: 'HEAD', signal: controller.signal });
                                 clearTimeout(timeoutId);
-                                return resp.ok ? baseUrl : null;
+                                if (resp.ok) return baseUrl;
+                                throw new Error("Gateway failed");
                             } catch (e) {
-                                return null;
+                                throw e;
                             }
                         };
 
-                        // 1. Try Primary and Local first
-                        const firstRound = await Promise.any(testCids.map(fetchWithTimeout).filter(Boolean).map(p => p.then(v => v || Promise.reject())));
-                        if (firstRound) {
+                        try {
+                            // Try the fastest responders
+                            const winner = await Promise.any(testGateways.map(g => fetchWithTimeout(g)));
+                            // Cleanup other pending requests
                             controllers.forEach(c => c.abort());
-                            return firstRound;
+                            return winner;
+                        } catch (e) {
+                            console.warn("All smart gateways failed or blocked. Using default storage.", e);
+                            return isHttps ? 'https://ipfs.io/ipfs/' : 'http://127.0.0.1:8080/ipfs/';
                         }
-
-                        // 2. Fallback to others if needed
-                        const fallbacks = this.knownGateways.filter(g => !testCids.includes(g));
-                        return await Promise.any(fallbacks.map(fetchWithTimeout).filter(Boolean).map(p => p.then(v => v || Promise.reject()))).catch(() => null);
                     },
 
                     async testGateways() {
