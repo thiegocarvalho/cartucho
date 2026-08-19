@@ -56,7 +56,8 @@ export const STORAGE_KEYS = {
     gateway: 'cartucho_gateway',
     lastGateway: 'cartucho_last_gateway',
     customGateways: 'cartucho_custom_gateways',
-    cacheLimit: 'cartucho_cache_limit'
+    cacheLimit: 'cartucho_cache_limit',
+    netplay: 'cartucho_netplay_server'
 };
 
 /** Cache de ROMs (Cache API). Só sobe a versão se o formato do que é guardado mudar. */
@@ -82,6 +83,14 @@ export const CACHE_LIMITE_PADRAO = 0;
 /** Timeout de cada HEAD na corrida de gateways (ms). */
 export const GATEWAY_RACE_TIMEOUT = 6000;
 /**
+ * Prazo da primeira chance, dada só ao gateway escolhido pelo usuário (ms). Igual ao da
+ * corrida de propósito: com um valor menor (2,5s foi tentado) o pinata, que responde em
+ * ~3,6s, perdia a própria vez — quem o escolhia era sempre atendido por outro, e a
+ * configuração não valia nada. Gateway fora do ar quase sempre falha na hora (DNS ou
+ * conexão recusada), então o prazo cheio raramente é gasto de verdade.
+ */
+export const GATEWAY_PREFERIDO_TIMEOUT = GATEWAY_RACE_TIMEOUT;
+/**
  * Timeout do teste manual de gateways (ms). Igual ao da corrida de propósito: com um
  * valor menor, gateway que o app usaria sem problema aparecia como "Timeout/Error".
  */
@@ -97,11 +106,28 @@ export const GATEWAY_TEST_TIMEOUT = GATEWAY_RACE_TIMEOUT;
  */
 export const GATEWAY_TEST_CID = 'bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m';
 
+/**
+ * Quanto tempo a busca do manifesto pode ficar só com o spinner antes de o modal
+ * explicar a demora. Menor que o timeout de um gateway de propósito: a espera longa
+ * acontece justamente quando o preferido não responde e a corrida vai para os outros.
+ */
+export const IMPORT_AVISO_DEMORA = 3500;
+
+/** Quanto tempo o status da câmera fica em "não é um Cartucho" antes de voltar a procurar. */
+export const SCAN_AVISO_DURACAO = 2500;
+
 /** Bibliotecas carregadas sob demanda — ver vendor.js. */
 export const QRCODE_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
 export const HTML5_QRCODE_URL = 'https://unpkg.com/html5-qrcode';
 
-export const EJS_DATA_PATH = 'https://cdn.emulatorjs.org/latest/data/';
+/**
+ * `stable`, não `latest`: a documentação do EmulatorJS avisa que latest "occasionally be
+ * broken" porque junta código novo com cores estáveis. Foi exatamente o que quebrou o save
+ * state aqui — `gameManager.getState()` estourava com
+ * "this.Module.EmulatorJSGetState is not a function", porque o loader chamava uma função
+ * que o core servido não expõe.
+ */
+export const EJS_DATA_PATH = 'https://cdn.emulatorjs.org/stable/data/';
 export const EJS_LOADER_URL = `${EJS_DATA_PATH}loader.js`;
 export const EJS_LOADER_ID = 'ejs-loader';
 /** Idiomas que o CDN do EmulatorJS realmente serve. */

@@ -171,3 +171,16 @@
 .gamepad-focus-pulse {
     animation: pulse-border 1.5s infinite;
 }
+
+/* Progresso do atalho de sair do jogo (Start + Cima por 3s).
+   É animação de CSS de propósito: o loop do controle roda a ~60fps e escrever o
+   progresso numa propriedade do Alpine dispararia notificação reativa a cada frame. */
+@keyframes eject-hold {
+    from { width: 0%; }
+    to { width: 100%; }
+}
+
+.eject-progress {
+    width: 0%;
+    animation: eject-hold 3s linear forwards;
+}

@@ -35,7 +35,14 @@ export function loadCacheLimit() {
 }
 
 export function saveCacheLimit(bytes) {
-    localStorage.setItem(STORAGE_KEYS.cacheLimit, String(bytes));
+    // Mesma tolerância das outras gravações: janela privada do Safari lança aqui.
+    try {
+        localStorage.setItem(STORAGE_KEYS.cacheLimit, String(bytes));
+        return true;
+    } catch (e) {
+        console.error('Não foi possível gravar o limite de cache', e);
+        return false;
+    }
 }
 
 /** Entradas do cache, da mais antiga para a mais recente. */

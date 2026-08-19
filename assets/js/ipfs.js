@@ -1,6 +1,6 @@
 // Tudo que fala com a rede IPFS: parsing de CID, escolha de gateway e fetch de manifesto.
 import {
-    DEFAULT_GATEWAY, LOCAL_GATEWAY, GATEWAY_RACE_TIMEOUT,
+    DEFAULT_GATEWAY, LOCAL_GATEWAY, GATEWAY_RACE_TIMEOUT, GATEWAY_PREFERIDO_TIMEOUT,
     GATEWAY_TEST_TIMEOUT, GATEWAY_TEST_CID
 } from './config.js';
 
@@ -61,17 +61,17 @@ export function normalizeGateway(gateway) {
  */
 export function parseGatewayInput(texto) {
     const cru = (texto || '').trim();
-    if (!cru) return { error: 'Digite o endereço do gateway.' };
+    if (!cru) return { error: 'Type the gateway address.' };
 
     const comEsquema = /^https?:\/\//i.test(cru) ? cru : `https://${cru}`;
     let url;
     try {
         url = new URL(comEsquema);
     } catch (e) {
-        return { error: 'Endereço inválido.' };
+        return { error: 'Invalid address.' };
     }
     if (!url.hostname.includes('.') && url.hostname !== 'localhost') {
-        return { error: 'Endereço inválido.' };
+        return { error: 'Invalid address.' };
     }
 
     // O caminho pode vir vazio, como /ipfs ou como /ipfs/ — tudo vira /ipfs/.
@@ -91,35 +91,39 @@ export async function probeGateway(gateway) {
         const resp = await headWithTimeout(`${gateway}${GATEWAY_TEST_CID}`, GATEWAY_TEST_TIMEOUT);
         if (resp.ok) return { ok: true, ms: Date.now() - inicio };
         if (resp.status === 403) return { ok: true, ms: Date.now() - inicio, restrito: true };
-        if (resp.status === 429) return { ok: false, motivo: 'o gateway está recusando por limite de uso' };
-        return { ok: false, motivo: `o gateway respondeu ${resp.status}` };
+        if (resp.status === 429) return { ok: false, motivo: 'the gateway is refusing due to rate limits' };
+        return { ok: false, motivo: `the gateway answered ${resp.status}` };
     } catch (e) {
-        return { ok: false, motivo: 'sem resposta, ou o gateway não permite acesso pelo navegador (CORS)' };
+        return { ok: false, motivo: 'no answer, or the gateway does not allow browser access (CORS)' };
     }
 }
 
 /**
  * Busca o manifesto JSON de um Cartucho.
+ *
+ * Com prazo (o mesmo da corrida): sem ele, gateway que aceita a conexão e não responde
+ * deixava a busca pendurada para sempre — e a tela de import ficava no spinner
+ * indefinidamente, sem erro e sem como sair. Acontece com CID que ninguém tem.
  * @returns {Promise<{data: object}|{error: 'unreachable'|'not-json'}>}
  */
 export async function fetchCartucho(gateway, cid) {
-    let response;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), GATEWAY_RACE_TIMEOUT);
     try {
-        response = await fetch(`${gateway}${cid}`);
-    } catch (e) {
-        return { error: 'unreachable' };
-    }
-    if (!response.ok) return { error: 'unreachable' };
+        const response = await fetch(`${gateway}${cid}`, { signal: controller.signal });
+        if (!response.ok) return { error: 'unreachable' };
 
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-        return { error: 'not-json' };
-    }
-
-    try {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            return { error: 'not-json' };
+        }
         return { data: await response.json() };
     } catch (e) {
-        return { error: 'not-json' };
+        // Prazo estourado e falha de rede dão no mesmo para quem espera: o gateway não
+        // entregou. Só corpo ilegível é 'not-json'.
+        return { error: e instanceof SyntaxError ? 'not-json' : 'unreachable' };
+    } finally {
+        clearTimeout(timer);
     }
 }
 
@@ -172,24 +176,43 @@ async function headWithTimeout(url, timeout, signal) {
 }
 
 /**
- * Corre um HEAD contra os gateways e devolve o primeiro que responder.
- * @param {{preferred?: string, fallback?: string}} opts gateway do usuário (entra na corrida)
- *        e último gateway sabidamente vivo (usado se a corrida inteira falhar).
+ * Escolhe o gateway que vai servir a ROM.
+ *
+ * O gateway do usuário tem a PRIMEIRA CHANCE, sozinho. Antes ele apenas entrava numa
+ * corrida com todos os outros, decidida por latência — então quem escolheu um gateway
+ * (um nó próprio, por exemplo) quase nunca era atendido por ele, e a configuração da tela
+ * de ajustes valia só para o manifesto e as capas. A chance tem prazo curto
+ * (`GATEWAY_PREFERIDO_TIMEOUT`) para que respeitar a escolha não custe caro quando esse
+ * gateway está fora do ar: passou do prazo, os outros correm normalmente.
+ *
+ * @param {{preferred?: string, fallback?: string}} opts gateway escolhido pelo usuário e
+ *        último gateway sabidamente vivo (usado se tudo falhar).
  * @returns {Promise<{gateway: string, label: string, fallback: boolean}>}
  */
 export async function resolveFastestGateway(cid, gateways, opts = {}) {
     const { preferred, fallback } = opts;
     const candidates = usableGateways([...new Set([preferred, ...gateways].filter(Boolean))]);
-    const raceController = new AbortController();
 
-    const probe = async (baseUrl) => {
-        const resp = await headWithTimeout(`${baseUrl}${cid}`, GATEWAY_RACE_TIMEOUT, raceController.signal);
+    const probe = async (baseUrl, timeout, signal) => {
+        const resp = await headWithTimeout(`${baseUrl}${cid}`, timeout, signal);
         if (!resp.ok) throw new Error(`Gateway respondeu ${resp.status}`);
         return baseUrl;
     };
 
+    if (preferred && candidates.includes(preferred)) {
+        try {
+            await probe(preferred, GATEWAY_PREFERIDO_TIMEOUT);
+            return { gateway: preferred, label: new URL(preferred).hostname.toUpperCase(), fallback: false };
+        } catch (e) {
+            console.warn(`Gateway escolhido (${preferred}) não respondeu a tempo; correndo os demais.`);
+        }
+    }
+
+    const raceController = new AbortController();
+    const outros = candidates.filter(g => g !== preferred);
     try {
-        const gateway = await Promise.any(candidates.map(probe));
+        if (outros.length === 0) throw new Error('nenhum outro gateway disponível');
+        const gateway = await Promise.any(outros.map(g => probe(g, GATEWAY_RACE_TIMEOUT, raceController.signal)));
         raceController.abort(); // cancela as requisições que ainda estão em voo
         return { gateway, label: new URL(gateway).hostname.toUpperCase(), fallback: false };
     } catch (e) {
@@ -231,7 +254,7 @@ export async function measureGateways(gateways, onResult) {
     const problema = checarCidDeTeste(GATEWAY_TEST_CID);
     if (problema) {
         console.error(`GATEWAY_TEST_CID inválido (${problema}): "${GATEWAY_TEST_CID}". Confira config.js.`);
-        return Object.fromEntries(gateways.map(g => [g, 'CID de teste inválido']));
+        return Object.fromEntries(gateways.map(g => [g, 'invalid test CID']));
     }
 
     // Em paralelo: sequencial custava até GATEWAY_TEST_TIMEOUT por gateway (a lista
@@ -246,12 +269,12 @@ export async function measureGateways(gateways, onResult) {
             const ms = Date.now() - inicio;
             if (resp.ok) status = `${ms}ms`;
             // 403 = gateway dedicado, vivo mas só serve o conteúdo da própria conta.
-            else if (resp.status === 403) status = `${ms}ms (restrito)`;
+            else if (resp.status === 403) status = `${ms}ms (restricted)`;
             // 429 = vivo, mas recusando por limite de uso — não é gateway ruim.
-            else if (resp.status === 429) status = 'limite atingido';
+            else if (resp.status === 429) status = 'rate limited';
             else status = `HTTP ${resp.status}`;
         } catch (e) {
-            status = 'sem resposta';
+            status = 'no answer';
         }
         if (onResult) onResult(gateway, status);
         return [gateway, status];
