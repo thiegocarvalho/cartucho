@@ -7,24 +7,32 @@
     <title>Cartucho // IPFS — Emulador retro descentralizado</title>
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="description"
-        content="Emulador retro que roda no navegador e busca os jogos direto da rede IPFS por CID. Sem servidor, sem backend, sem instalar nada.">
+        content="Retro emulator that runs in the browser and fetches games straight from IPFS by CID. No server, no backend, nothing to install.">
     <meta name="theme-color" content="#0a0a0c">
 
-    <!-- Preview ao compartilhar o link.
-         og:image fica sem valor fixo de propósito: a arte do preview é a capa do próprio
-         cartucho, preenchida em runtime por assets/js/page-meta.js. Isso cobre a aba, o
-         histórico e a Web Share API — robôs de rede social não executam JS, então para eles
-         o preview sai sem imagem até existir algo montando o HTML por CID. -->
+    <!-- Preview ao compartilhar.
+         Os robôs de rede social não executam JavaScript: eles leem estas tags do HTML servido
+         e vão embora. Como o GitHub Pages devolve o mesmo arquivo para qualquer ?cartucho=CID,
+         a imagem daqui é obrigatoriamente a do app — a capa do cartucho só entra no preview se
+         alguém montar o HTML por CID (um Worker na frente do site).
+         page-meta.js sobrescreve estas tags em runtime com os dados do jogo: vale para a aba,
+         o histórico, a Web Share API e qualquer leitor que rode JS. -->
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Cartucho // IPFS">
+    <meta property="og:locale" content="en_US">
     <meta property="og:title" content="Cartucho // IPFS">
     <meta property="og:description"
-        content="Emulador retro descentralizado. Os jogos vivem na rede IPFS; o link carrega o cartucho direto no navegador.">
-    <meta property="og:image" content="">
+        content="Decentralized retro emulator. Games live on IPFS; the link boots the cartridge straight in your browser.">
     <meta property="og:url" content="https://thiegocarvalho.github.io/cartucho/">
+    <meta property="og:image" content="https://thiegocarvalho.github.io/cartucho/assets/img/og-cover.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Cartucho // IPFS — decentralized retro emulator">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Cartucho // IPFS">
-    <meta name="twitter:description" content="Emulador retro descentralizado, direto da rede IPFS.">
-    <meta name="twitter:image" content="">
+    <meta name="twitter:description" content="Decentralized retro emulator, straight from IPFS.">
+    <meta name="twitter:image" content="https://thiegocarvalho.github.io/cartucho/assets/img/og-cover.png">
 
     <!-- Favicon: pixel transparente, só para não dar 404 -->
     <link rel="icon"
@@ -40,7 +48,7 @@
     <!-- CSS do Tailwind pré-compilado (só as classes usadas). Substitui o Play CDN, que
          eram 440 KB de JS compilando CSS no browser a cada carga.
          Regenerar após mexer em classes:  npm run css   (ver README) -->
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=ddb6e8fd">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=b41d2b83">
 
     <!-- Fontes: só os pesos usados (Inter 400/700, Orbitron 700/900, Silkscreen 400/700).
          Carregadas sem bloquear o render — display=swap mostra o texto na fonte de sistema
@@ -63,16 +71,16 @@
         <script type="importmap">
             {
                 "imports": {
-                        "./assets/js/app.js": "./assets/js/app.js?v=ddb6e8fd",
-                        "./assets/js/config.js": "./assets/js/config.js?v=ddb6e8fd",
-                        "./assets/js/emulator.js": "./assets/js/emulator.js?v=ddb6e8fd",
-                        "./assets/js/gamepad.js": "./assets/js/gamepad.js?v=ddb6e8fd",
-                        "./assets/js/icons.js": "./assets/js/icons.js?v=ddb6e8fd",
-                        "./assets/js/ipfs.js": "./assets/js/ipfs.js?v=ddb6e8fd",
-                        "./assets/js/library.js": "./assets/js/library.js?v=ddb6e8fd",
-                        "./assets/js/page-meta.js": "./assets/js/page-meta.js?v=ddb6e8fd",
-                        "./assets/js/rom-cache.js": "./assets/js/rom-cache.js?v=ddb6e8fd",
-                        "./assets/js/vendor.js": "./assets/js/vendor.js?v=ddb6e8fd"
+                        "./assets/js/app.js": "./assets/js/app.js?v=b41d2b83",
+                        "./assets/js/config.js": "./assets/js/config.js?v=b41d2b83",
+                        "./assets/js/emulator.js": "./assets/js/emulator.js?v=b41d2b83",
+                        "./assets/js/gamepad.js": "./assets/js/gamepad.js?v=b41d2b83",
+                        "./assets/js/icons.js": "./assets/js/icons.js?v=b41d2b83",
+                        "./assets/js/ipfs.js": "./assets/js/ipfs.js?v=b41d2b83",
+                        "./assets/js/library.js": "./assets/js/library.js?v=b41d2b83",
+                        "./assets/js/page-meta.js": "./assets/js/page-meta.js?v=b41d2b83",
+                        "./assets/js/rom-cache.js": "./assets/js/rom-cache.js?v=b41d2b83",
+                        "./assets/js/vendor.js": "./assets/js/vendor.js?v=b41d2b83"
                 }
         }
         </script>

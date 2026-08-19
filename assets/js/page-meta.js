@@ -42,4 +42,5 @@ export function aplicarMetaDoJogo(jogo, capaUrl) {
     }
 
     definirMeta('meta[property="og:url"]', window.location.href);
+    definirMeta('meta[property="og:image:alt"]', `Capa de ${jogo.name}`);
 }

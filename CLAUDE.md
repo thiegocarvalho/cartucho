@@ -190,6 +190,15 @@ permitidos. O essencial ao mexer no markup:
 - As ações `Add_Cartucho` e `Settings` ficam **fora** do `<nav>` rolável, fixas no rodapé da
   barra — dentro dele, sumiam quando a lista de consoles crescia.
 - Configurações é **página** (`activePage === 'Settings'`, com `?page=Settings`), não modal.
+- **Preview de link é fixo, por decisão.** As meta tags do `index.html` trazem a arte do app
+  (`assets/img/og-cover.png`, 1200×630, texto em inglês) e **não podem ficar vazias**: robô de
+  rede social não executa JS, então é só isso que ele lê — deixar `og:image` vazio para
+  preencher por script derruba o preview inteiro. `page-meta.js` sobrescreve título, descrição
+  e imagem com os dados do jogo em runtime, o que vale para a aba, o histórico e a Web Share
+  API. Preview com a capa de cada cartucho exigiria algo montando o HTML por CID (um Worker na
+  frente do site): foi avaliado e descartado.
+- Os textos do preview (`og:*`, `twitter:*`, `description`) são em **inglês**, como a imagem e
+  o README; a interface do app segue em português.
 - **Todo item de navegação trata `isPlaying`.** As telas do acervo e de configurações vivem
   atrás de `x-show="!isPlaying"`, então trocar `activePage` com o emulador aberto não mostra
   nada: o clique tem que sair do jogo com `stopGame('<destino>')`. Item novo na barra segue a
