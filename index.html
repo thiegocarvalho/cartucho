@@ -4,245 +4,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cartucho - Web3 Emulator</title>
-    <!-- Security Headers -->
+    <title>Cartucho // IPFS — Emulador retro descentralizado</title>
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <!-- Performance: Preconnect to IPFS Gateways -->
-    <link rel="preconnect" href="https://ipfs.io">
-    <link rel="preconnect" href="https://gateway.pinata.cloud">
-    <link rel="preconnect" href="https://cloudflare-ipfs.com">
-    <link rel="dns-prefetch" href="https://ipfs.io">
-    <!-- Tailwind CSS (Fixed version to avoid production warnings) -->
-    <script src="https://cdn.tailwindcss.com/3.4.15"></script>
-    <!-- Google Fonts: Inter, Silkscreen, and Orbitron for retro/sci-fi feel -->
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Silkscreen:wght@400;700&family=Orbitron:wght@400;700;900&family=Press+Start+2P&display=swap"
-        rel="stylesheet">
-    <!-- Alpine.js CDN -->
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <!-- QR Code Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <!-- Favicon: Transparent pixel to avoid 404 -->
+    <meta name="description"
+        content="Emulador retro que roda no navegador e busca os jogos direto da rede IPFS por CID. Sem servidor, sem backend, sem instalar nada.">
+    <meta name="theme-color" content="#0a0a0c">
+
+    <!-- Preview ao compartilhar o link.
+         og:image fica sem valor fixo de propósito: a arte do preview é a capa do próprio
+         cartucho, preenchida em runtime por assets/js/page-meta.js. Isso cobre a aba, o
+         histórico e a Web Share API — robôs de rede social não executam JS, então para eles
+         o preview sai sem imagem até existir algo montando o HTML por CID. -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Cartucho // IPFS">
+    <meta property="og:description"
+        content="Emulador retro descentralizado. Os jogos vivem na rede IPFS; o link carrega o cartucho direto no navegador.">
+    <meta property="og:image" content="">
+    <meta property="og:url" content="https://thiegocarvalho.github.io/cartucho/">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Cartucho // IPFS">
+    <meta name="twitter:description" content="Emulador retro descentralizado, direto da rede IPFS.">
+    <meta name="twitter:image" content="">
+
+    <!-- Favicon: pixel transparente, só para não dar 404 -->
     <link rel="icon"
         href="data:image/x-icon;base64,AAABAAEAAQEAAAEAIAAwAAAAFgAAACgAAAABAAAAAgAAAAEAIAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAA">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'cartucho-dark': '#0a0a0c',
-                        'cartucho-sidebar': '#0f0f18', // Deepened
-                        'cartucho-primary': '#4f46e5', // Updated to match top bar
-                        'cartucho-accent': '#7c3aed',
-                        'cartucho-zinc': '#18181b',
-                    },
-                    fontFamily: {
-                        'sans': ['Inter', 'sans-serif'],
-                        'retro': ['Silkscreen', 'cursive'],
-                        'orbitron': ['Orbitron', 'sans-serif'],
-                        'arcade': ['"Press Start 2P"', 'cursive'],
-                    },
-                    backgroundImage: {
-                        'gradient-border': 'linear-gradient(to bottom right, rgba(255,255,255,0.2), rgba(255,255,255,0.05))',
-                        'neon-glow': 'radial-gradient(circle at center, rgba(79, 70, 229, 0.15) 0%, transparent 70%)',
-                    },
-                    boxShadow: {
-                        'neon': '0 0 20px rgba(79, 70, 229, 0.4)',
-                        'neon-glow': '0 0 40px rgba(79, 70, 229, 0.2)',
-                    },
-                    aspectRatio: {
-                        '4/3': '4 / 3',
-                    },
+
+    <!-- Handshake antecipado com os gateways da corrida (KNOWN_GATEWAYS em config.js).
+         Mantenha em sincronia com aquela lista. -->
+    <link rel="preconnect" href="https://ipfs.filebase.io" crossorigin>
+    <link rel="preconnect" href="https://ipfs.raribleuserdata.com" crossorigin>
+    <link rel="preconnect" href="https://gateway.pinata.cloud" crossorigin>
+    <link rel="preconnect" href="https://cdn.emulatorjs.org">
+
+    <!-- CSS do Tailwind pré-compilado (só as classes usadas). Substitui o Play CDN, que
+         eram 440 KB de JS compilando CSS no browser a cada carga.
+         Regenerar após mexer em classes:  npm run css   (ver README) -->
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=ddb6e8fd">
+
+    <!-- Fontes: só os pesos usados (Inter 400/700, Orbitron 700/900, Silkscreen 400/700).
+         Carregadas sem bloquear o render — display=swap mostra o texto na fonte de sistema
+         e troca quando a real chega. -->
+    <link rel="preload" as="style"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Silkscreen:wght@400;700&family=Orbitron:wght@700;900&display=swap">
+    <link rel="stylesheet" media="print" onload="this.media='all'"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Silkscreen:wght@400;700&family=Orbitron:wght@700;900&display=swap">
+    <noscript>
+        <link rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Silkscreen:wght@400;700&family=Orbitron:wght@700;900&display=swap">
+    </noscript>
+
+    <!-- qrcodejs e html5-qrcode NÃO entram aqui: são ~385 KB usados só no scanner e no
+         modal de compartilhar, carregados sob demanda por assets/js/vendor.js. -->
+
+    <!-- ORDEM IMPORTA: app.js registra Alpine.data('cartuchoApp') no evento alpine:init,
+         então precisa ser avaliado ANTES do CDN do Alpine. -->
+<!-- importmap gerado por scripts/version.mjs -->
+        <script type="importmap">
+            {
+                "imports": {
+                        "./assets/js/app.js": "./assets/js/app.js?v=ddb6e8fd",
+                        "./assets/js/config.js": "./assets/js/config.js?v=ddb6e8fd",
+                        "./assets/js/emulator.js": "./assets/js/emulator.js?v=ddb6e8fd",
+                        "./assets/js/gamepad.js": "./assets/js/gamepad.js?v=ddb6e8fd",
+                        "./assets/js/icons.js": "./assets/js/icons.js?v=ddb6e8fd",
+                        "./assets/js/ipfs.js": "./assets/js/ipfs.js?v=ddb6e8fd",
+                        "./assets/js/library.js": "./assets/js/library.js?v=ddb6e8fd",
+                        "./assets/js/page-meta.js": "./assets/js/page-meta.js?v=ddb6e8fd",
+                        "./assets/js/rom-cache.js": "./assets/js/rom-cache.js?v=ddb6e8fd",
+                        "./assets/js/vendor.js": "./assets/js/vendor.js?v=ddb6e8fd"
                 }
-            }
         }
-    </script>
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
-
-        /* Refined CRT Scanline Effect with RGB Shift */
-        .crt-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background:
-                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
-                linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        .crt-overlay::after {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            background:
-                radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.3) 100%),
-                rgba(18, 16, 16, 0);
-            z-index: 11;
-            pointer-events: none;
-        }
-
-        .crt-flicker {
-            animation: flicker 0.1s infinite;
-        }
-
-        @keyframes flicker {
-            0% {
-                opacity: 0.97;
-            }
-
-            50% {
-                opacity: 1;
-            }
-
-            100% {
-                opacity: 0.98;
-            }
-        }
-
-        /* Glassmorphism Classes */
-        .glass-panel {
-            background: rgba(24, 24, 43, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .glass-hover:hover {
-            background: rgba(24, 24, 43, 0.9);
-            border-color: rgba(79, 70, 229, 0.3);
-            box-shadow: 0 0 20px rgba(79, 70, 229, 0.15);
-        }
-
-        /* Retro Boot Animation */
-        .boot-text {
-            font-family: 'Silkscreen', cursive;
-            color: #4f46e5;
-            text-shadow: 0 0 10px rgba(79, 70, 229, 0.5);
-            letter-spacing: 2px;
-        }
-
-        /* Scrollbar Styling */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(79, 70, 229, 0.2);
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(79, 70, 229, 0.4);
-        }
-
-        @keyframes loading {
-            0% {
-                transform: translateX(-100%);
-            }
-
-            100% {
-                transform: translateX(100%);
-            }
-        }
-
-        @keyframes pulse-glow {
-
-            0%,
-            100% {
-                opacity: 0.5;
-                filter: blur(10px);
-            }
-
-            50% {
-                opacity: 0.8;
-                filter: blur(15px);
-            }
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #12121e;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #6366f1;
-            border-radius: 10px;
-        }
-
-        /* Glass Effect */
-        .glass {
-            background: rgba(18, 18, 30, 0.8);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Font Utilities */
-        .font-retro {
-            font-family: 'Silkscreen', cursive;
-        }
-
-        /* Gamepad Focus Style */
-        .gamepad-focus {
-            outline: none !important;
-            border-color: #4f46e5 !important;
-            box-shadow: 0 0 20px rgba(79, 70, 229, 0.6), inset 0 0 10px rgba(79, 70, 229, 0.2) !important;
-            transform: scale(1.02);
-            z-index: 50;
-            background: rgba(79, 70, 229, 0.1) !important;
-        }
-
-        .retro-card.gamepad-focus {
-            transform: scale(1.05);
-        }
-
-        @keyframes pulse-border {
-            0% {
-                border-color: rgba(79, 70, 229, 0.5);
-            }
-
-            50% {
-                border-color: rgba(79, 70, 229, 1);
-            }
-
-            100% {
-                border-color: rgba(79, 70, 229, 0.5);
-            }
-        }
-
-        .gamepad-focus-pulse {
-            animation: pulse-border 1.5s infinite;
-        }
-    </style>
+        </script>
+        <!-- /importmap -->
+    <script type="module" src="assets/js/app.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 
-<body class="bg-cartucho-dark text-slate-300 font-sans h-screen flex flex-col overflow-hidden" x-data="cartuchoApp()"
-    x-init="initData()">
+<body class="bg-cartucho-dark text-slate-300 font-sans h-screen flex flex-col overflow-hidden" x-data="cartuchoApp"
+    x-init="initData()" @keydown.escape.window="goBack()">
 
     <div x-show="copyFeedback" x-transition:enter="transition ease-out duration-300"
         x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0"
         x-transition:leave-end="opacity-0 translate-y-4" x-cloak
         class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+
+        <!-- Aviso de contexto sem HTTPS: o navegador desliga Cache API, área de
+             transferência e câmera, e nada disso avisa por conta própria. -->
+        <template x-if="contextoInseguro">
+            <div
+                class="fixed top-0 left-0 right-0 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-center gap-3 z-[200] backdrop-blur-md">
+                <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="text-[13px] text-amber-100">
+                    Sem contexto seguro: cache de ROM, copiar link e câmera estão desativados pelo
+                    navegador. Acesse por <span class="font-mono">localhost</span> ou HTTPS.
+                </span>
+            </div>
+        </template>
 
         <!-- Protocol Warning Banner -->
         <template x-if="window.location.protocol === 'file:'">
@@ -252,7 +114,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <span class="text-[9px] uppercase font-retro tracking-widest text-red-200">
+                <span class="text-[13px] text-red-200">
                     Modo_Offline: Saves Desativados. Use um servidor local (python -m http.server) para funcionalidade
                     completa.
                 </span>
@@ -260,7 +122,81 @@
         </template>
         <div class="glass-panel px-6 py-3 rounded-2xl flex items-center space-x-3 shadow-2xl border-indigo-500/30">
             <div class="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
-            <span class="text-xs font-retro tracking-[0.2em] text-white uppercase">CARTUCHO_COPIED</span>
+            <span class="text-[13px] text-white" x-text="toastMessage"></span>
+        </div>
+    </div>
+
+    <!-- Confirmação de mudança do limite de cache: reduzir o teto descarta ROMs baixadas -->
+    <div x-show="pendingCacheLimit" x-cloak role="dialog" aria-modal="true" aria-label="Confirmar limite de cache"
+        class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div @click.away="cancelarLimiteDeCache()"
+            class="glass-panel w-full max-w-sm rounded-3xl p-8 border-amber-500/20 shadow-2xl">
+            <h2 class="text-[16px] font-retro tracking-[0.2em] text-amber-300 uppercase mb-4">Liberar cache</h2>
+            <p class="text-[13px] text-slate-300 leading-relaxed mb-2">
+                Passar para <span class="text-white font-bold"
+                    x-text="pendingCacheLimit?.bytes ? formatBytes(pendingCacheLimit.bytes) : 'desligado'"></span>
+                apaga as
+                <span class="text-white font-bold" x-text="pendingCacheLimit?.jogos"></span>
+                ROMs guardadas
+                (<span x-text="formatBytes(pendingCacheLimit?.liberar || 0)"></span>).
+            </p>
+            <p class="text-[13px] text-slate-500 leading-relaxed mb-8">
+                Elas voltam a ser baixadas na próxima vez que você abrir cada jogo.
+            </p>
+            <div class="flex items-center gap-3">
+                <button @click="cancelarLimiteDeCache()"
+                    class="nav-item flex-1 min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-[12px] font-retro uppercase tracking-[0.2em] hover:bg-white/10 transition-all">
+                    Cancelar
+                </button>
+                <button @click="confirmarLimiteDeCache()"
+                    class="nav-item flex-1 min-h-[44px] px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-[12px] font-retro uppercase tracking-[0.2em] transition-all active:scale-95">
+                    Liberar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmação de exclusão (inline, para não congelar a página com window.confirm) -->
+    <div x-show="pendingDelete" x-cloak role="dialog" aria-modal="true" aria-label="Confirmar exclusão"
+        class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div @click.away="cancelDelete()"
+            class="glass-panel w-full max-w-sm rounded-3xl p-8 border-red-500/20 shadow-2xl">
+            <h2 class="text-[16px] font-retro tracking-[0.2em] text-red-300 uppercase mb-4">Remover cartucho</h2>
+            <p class="text-sm text-white font-bold mb-2" x-text="pendingDelete?.name"></p>
+            <p class="text-[13px] text-slate-400 leading-relaxed mb-8">
+                Sai só da sua biblioteca local. O CID continua válido na rede IPFS e pode ser
+                importado de novo a qualquer momento.
+            </p>
+            <div class="flex items-center space-x-3">
+                <button @click="cancelDelete()"
+                    class="nav-item flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-[12px] font-retro uppercase tracking-widest hover:bg-white/10 transition-all">
+                    Cancelar
+                </button>
+                <button @click="commitDelete()"
+                    class="nav-item flex-1 px-4 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white text-[12px] font-retro uppercase tracking-widest transition-all active:scale-95">
+                    Remover
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast de erro (substitui alert(), que congela a página) -->
+    <div x-show="errorMessage" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 translate-y-4" x-cloak
+        class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[110] max-w-lg px-4">
+        <div
+            class="glass-panel px-6 py-4 rounded-2xl flex items-start space-x-3 shadow-2xl border-red-500/30 bg-red-950/40">
+            <svg class="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div class="flex flex-col">
+                <span class="text-[12px] font-retro tracking-[0.2em] text-red-300 uppercase leading-none">Erro</span>
+                <span class="text-[13px] text-slate-200 mt-2 leading-relaxed" x-text="errorMessage"></span>
+            </div>
+            <button @click="errorMessage = ''" class="text-slate-500 hover:text-white text-xs shrink-0">✕</button>
         </div>
     </div>
 
@@ -277,8 +213,10 @@
             </svg>
         </div>
         <div class="flex flex-col">
-            <span class="text-[8px] font-retro text-white tracking-[0.2em] uppercase leading-none">Gamepad_Active</span>
-            <span class="text-[7px] text-slate-500 font-retro tracking-widest uppercase mt-1">Direct_Input_Linked</span>
+            <span
+                class="text-[12px] font-retro text-white tracking-[0.2em] uppercase leading-none">Gamepad_Active</span>
+            <span
+                class="text-[12px] text-slate-400 font-retro tracking-widest uppercase mt-1">Direct_Input_Linked</span>
         </div>
     </div>
 
@@ -296,8 +234,8 @@
             </svg>
         </div>
         <div class="flex flex-col">
-            <span class="text-[9px] font-retro text-white tracking-[0.2em] uppercase leading-none">Exiting_Game</span>
-            <span class="text-[7px] text-red-200 font-retro tracking-widest uppercase mt-1">Hold_To_Confirm...</span>
+            <span class="text-[12px] font-retro text-white tracking-[0.2em] uppercase leading-none">Exiting_Game</span>
+            <span class="text-[12px] text-red-200 font-retro tracking-widest uppercase mt-1">Hold_To_Confirm...</span>
         </div>
     </div>
 
@@ -307,7 +245,8 @@
         <span @click="if(isPlaying) { stopGame(); } else { activePage = 'Home'; }"
             class="font-retro text-indigo-500 tracking-widest text-lg md:text-xl cursor-pointer">Cartucho<span
                 class="text-white">//IPFS</span></span>
-        <button @click="sidebarOpen = !sidebarOpen" class="text-white focus:outline-none">
+        <button @click="sidebarOpen = !sidebarOpen" aria-label="Abrir menu"
+            class="nav-item -mr-2 w-11 h-11 flex items-center justify-center rounded-xl text-white hover:bg-white/5 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
@@ -316,6 +255,13 @@
     </div>
 
     <div class="flex-1 flex min-h-0 relative">
+        <!-- Véu da gaveta: fechar tocando fora é o gesto esperado no celular -->
+        <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
+            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
         <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
             class="fixed inset-y-0 left-0 z-50 w-72 glass-panel border-r border-white/5 flex flex-col lg:relative sidebar-transition">
 
@@ -345,38 +291,45 @@
                     </button>
                 </template>
 
-                <div class="pt-8 px-2 space-y-3">
-                    <label
-                        class="block text-[9px] font-retro text-slate-600 uppercase tracking-[0.2em] px-2 mb-2">Systems_Control</label>
-
-                    <button @click="showImportModal = true"
-                        class="nav-item w-full bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 font-retro text-[10px] tracking-widest py-3 px-4 rounded-xl border border-indigo-600/30 shadow-lg hover:shadow-indigo-600/10 transition-all flex items-center space-x-3 uppercase">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                        <span>Add_Cartucho</span>
-                    </button>
-
-                    <button @click="showSettingsModal = true"
-                        class="nav-item w-full bg-slate-800/40 hover:bg-slate-800/60 text-slate-400 font-retro text-[10px] tracking-widest py-3 px-4 rounded-xl border border-white/5 transition-all flex items-center space-x-3 uppercase">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                        </svg>
-                        <span>Settings</span>
-                    </button>
-                </div>
             </nav>
+
+
+            <!-- Ações fixas: fora do nav rolável, senão somem quando a lista de
+                 consoles cresce — e são justamente as duas ações principais. -->
+            <div class="shrink-0 p-4 pt-3 space-y-3 border-t border-white/5">
+                <label
+                    class="block text-[12px] font-retro text-slate-600 uppercase tracking-[0.2em] px-2 mb-1">Systems_Control</label>
+
+                <button
+                    @click="if (isPlaying) { stopGame('Home', { acao: 'importar' }); } else { showImportModal = true; if (window.innerWidth < 1024) sidebarOpen = false; }"
+                    class="nav-item w-full bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 font-retro text-[12px] tracking-widest min-h-[44px] py-3 px-4 rounded-xl border border-indigo-600/30 shadow-lg hover:shadow-indigo-600/10 transition-all flex items-center space-x-3 uppercase">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>Add_Cartucho</span>
+                </button>
+
+                <button
+                    @click="if (isPlaying) { stopGame('Settings'); } else { activePage = 'Settings'; refreshCacheStats(); if (window.innerWidth < 1024) sidebarOpen = false; }"
+                    :class="activePage === 'Settings' ? 'bg-indigo-600/20 text-indigo-300 border-indigo-600/40' : 'bg-slate-800/40 hover:bg-slate-800/60 text-slate-400 border-white/5'"
+                    class="nav-item w-full font-retro text-[12px] tracking-widest min-h-[44px] py-3 px-4 rounded-xl border transition-all flex items-center space-x-3 uppercase">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                    </svg>
+                    <span>Settings</span>
+                </button>
+            </div>
 
             <!-- Sidebar Footer: Manage Library -->
             <div class="p-4 border-t border-white/5 hidden lg:block">
-                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest px-2 mb-3">Library Stats</h3>
+                <h3 class="text-[16px] font-retro text-slate-500 uppercase tracking-[0.2em] px-2 mb-3">Biblioteca</h3>
                 <div class="px-2 py-1 space-y-1">
-                    <div class="flex justify-between text-[10px] font-bold">
-                        <span class="text-slate-500">Total Games</span>
+                    <div class="flex justify-between text-[13px] font-bold">
+                        <span class="text-slate-500">Cartuchos</span>
                         <span class="text-indigo-400" x-text="library.length"></span>
                     </div>
                 </div>
@@ -392,7 +345,7 @@
 
                 <!-- Search & Layout Header (Dashboard Top) -->
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-10"
-                    x-show="!isPlaying">
+                    x-show="!isPlaying && activePage !== 'Settings'">
                     <h1 class="text-xl md:text-2xl font-bold text-white font-retro tracking-[0.1em] uppercase opacity-90"
                         x-text="activePage === 'Home' ? 'Library' : activePage"></h1>
 
@@ -400,8 +353,9 @@
                         <div
                             class="absolute inset-0 bg-indigo-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity">
                         </div>
-                        <input type="text" x-model="searchQuery" placeholder="Search data archives..."
-                            class="relative w-full glass-panel rounded-xl py-3 pl-11 pr-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all">
+                        <input type="text" x-model="searchQuery" placeholder="Buscar no acervo..."
+                            aria-label="Buscar no acervo"
+                            class="relative w-full glass-panel rounded-xl min-h-[44px] py-3 pl-11 pr-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all">
                         <svg class="absolute left-4 top-3.5 h-4 w-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors"
                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -411,98 +365,112 @@
                 </div>
 
                 <!-- DASHBOARD VIEW: Hero + Grid -->
-                <div x-show="!isPlaying" class="space-y-12">
+                <div x-show="!isPlaying && activePage !== 'Settings'" class="space-y-12">
 
-                    <div x-show="featuredGame"
-                        class="relative w-full h-[180px] md:h-[260px] rounded-[1.5rem] md:rounded-[2rem] overflow-hidden group shadow-2xl bg-[#0a0a14] border border-white/5">
+                    <!-- DESTAQUE
+                         Abaixo de lg empilha: arte em cima, texto embaixo. O layout lado a
+                         lado só entra quando há largura — antes disso a arte ficava atrás do
+                         título e comia o nome do jogo no celular. -->
+                    <div x-show="featuredGame" class="relative w-full rounded-3xl overflow-hidden group shadow-2xl bg-[#0a0a14] border border-white/5
+                               flex flex-col lg:block lg:h-[280px]">
 
-                        <!-- Side Image with Masked Gradient -->
-                        <div class="absolute right-0 top-0 bottom-0 w-[45%] z-0 overflow-hidden">
-                            <img :src="getMediaUrl(featuredGame?.screenshot || featuredGame?.cover) || 'https://placehold.co/1200x600?text=No+Media'"
+                        <!-- Arte: faixa no topo (mobile) / lateral mascarada (desktop) -->
+                        <div
+                            class="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden
+                                    lg:absolute lg:right-0 lg:top-0 lg:bottom-0 lg:w-[52%] lg:h-auto lg:aspect-auto lg:z-0">
+                            <img :alt="featuredGame ? `Arte de ${featuredGame.name}` : ''"
+                                :src="getMediaUrl(featuredGame?.screenshot || featuredGame?.cover) || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%201200%20600%22%3E%3Crect%20width%3D%221200%22%20height%3D%22600%22%20fill%3D%22%2314141f%22/%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%221198%22%20height%3D%22598%22%20fill%3D%22none%22%20stroke%3D%22%234f46e5%22%20stroke-opacity%3D%22.25%22%20stroke-width%3D%222%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20fill%3D%22%234f46e5%22%20fill-opacity%3D%22.55%22%20font-family%3D%22monospace%22%20font-size%3D%2254%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%20letter-spacing%3D%222%22%3ESEM%20ARTE%3C/text%3E%3C/svg%3E'"
                                 class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-1000"
-                                alt="Hero" fetchpriority="high" decoding="async">
-                            <!-- Horizontal Cinematic Mask -->
-                            <div
-                                class="absolute inset-0 bg-gradient-to-r from-[#0a0a14] via-[#0a0a14]/60 to-transparent">
+                                fetchpriority="high" decoding="async">
+                            <!-- Máscara: de baixo no empilhado, da esquerda no lado a lado -->
+                            <div class="absolute inset-0 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14]/40 to-transparent
+                                        lg:bg-gradient-to-r lg:from-[#0a0a14] lg:via-[#0a0a14]/60 lg:to-transparent">
                             </div>
                         </div>
 
-                        <!-- Left Content Area -->
-                        <div
-                            class="relative z-10 flex flex-col justify-center h-full px-6 md:px-12 space-y-2 md:space-y-4 max-w-2xl bg-gradient-to-r from-[#0a0a14] via-transparent to-transparent">
+                        <!-- Conteúdo -->
+                        <div class="relative z-10 flex flex-col justify-center gap-3 p-6 lg:h-full lg:px-12 lg:max-w-[55%]
+                                    lg:bg-gradient-to-r lg:from-[#0a0a14] lg:via-[#0a0a14]/90 lg:to-transparent
+                                    -mt-10 lg:mt-0">
                             <div class="flex items-center">
                                 <span
-                                    class="border border-indigo-500/50 text-indigo-400 px-3 py-0.5 rounded-md text-[8px] font-retro tracking-widest uppercase bg-indigo-500/10"
+                                    class="border border-indigo-500/50 text-indigo-400 px-3 py-1 rounded-xl text-[12px] font-retro tracking-[0.2em] uppercase bg-indigo-500/10"
                                     x-text="featuredGame?.system"></span>
                             </div>
 
-                            <h2 class="text-xl md:text-3xl font-bold text-white leading-tight font-retro tracking-tight"
-                                x-text="featuredGame?.name">
-                            </h2>
+                            <h2 class="text-2xl lg:text-3xl font-bold text-white leading-tight font-orbitron tracking-tight line-clamp-2"
+                                x-text="featuredGame?.name"></h2>
 
-                            <p class="hidden sm:block text-slate-400 text-[10px] md:text-xs leading-relaxed line-clamp-2 md:line-clamp-3 opacity-90"
+                            <p class="text-slate-400 text-sm leading-relaxed line-clamp-2 lg:line-clamp-3"
                                 x-text="featuredGame?.description"></p>
 
-                            <!-- Metadata Tags -->
-                            <div class="flex flex-wrap gap-2 pt-1"
-                                x-show="featuredGame?.maxPlayers || featuredGame?.genres">
+                            <div class="flex flex-wrap gap-2" x-show="featuredGame?.maxPlayers || featuredGame?.genres">
                                 <span
-                                    class="bg-white/5 border border-white/10 text-white/70 px-2 py-0.5 rounded text-[9px] font-retro tracking-widest flex items-center space-x-1"
+                                    class="bg-white/5 border border-white/10 text-white/70 px-3 py-1 rounded-xl text-[12px] font-retro tracking-[0.15em] flex items-center gap-2"
                                     x-show="featuredGame?.maxPlayers">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
-                                        </path>
+                                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                     </svg>
                                     <span x-text="featuredGame?.maxPlayers + ' Players'"></span>
                                 </span>
                                 <span
-                                    class="bg-white/5 border border-white/10 text-white/70 px-2 py-0.5 rounded text-[9px] font-retro tracking-widest"
+                                    class="bg-white/5 border border-white/10 text-white/70 px-3 py-1 rounded-xl text-[12px] font-retro tracking-[0.15em]"
                                     x-show="featuredGame?.genres" x-text="featuredGame?.genres"></span>
                             </div>
 
-                            <!-- Mini Action Bar -->
-                            <div class="flex items-center space-x-4 md:space-x-6 pt-2 md:pt-4">
-                                <!-- Play Button -->
+                            <!-- Ações: alvos de 44px, lado a lado e alcançáveis no polegar -->
+                            <div class="flex items-center gap-3 pt-1">
                                 <button @click="loadGame(featuredGame)"
-                                    class="nav-item flex items-center space-x-3 group/btn hover:text-white transition-all">
-                                    <div
-                                        class="w-8 h-8 bg-white text-indigo-600 rounded-full flex items-center justify-center shadow-lg group-hover/btn:scale-110 transition-transform">
-                                        <svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                    class="nav-item flex items-center gap-3 min-h-[44px] pl-1 pr-4 rounded-2xl hover:bg-white/5 transition-all group/btn">
+                                    <span
+                                        class="w-11 h-11 bg-white text-indigo-600 rounded-full flex items-center justify-center shadow-lg group-hover/btn:scale-105 transition-transform shrink-0">
+                                        <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                                             <path d="M8 5v14l11-7z" />
                                         </svg>
-                                    </div>
+                                    </span>
                                     <span
-                                        class="text-[9px] font-bold uppercase tracking-widest text-slate-400 group-hover/btn:text-white">play
-                                        game</span>
+                                        class="text-[12px] font-retro uppercase tracking-[0.2em] text-slate-300 group-hover/btn:text-white">Jogar</span>
                                 </button>
 
-                                <!-- Share Button (Copy CID) -->
                                 <button @click="shareCartucho(featuredGame)"
-                                    class="nav-item flex items-center space-x-3 group/btn hover:text-white transition-all">
-                                    <div
-                                        class="w-8 h-8 bg-white/10 text-white rounded-full flex items-center justify-center border border-white/20 group-hover/btn:border-white/40 transition-all">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    :aria-label="`Compartilhar ${featuredGame?.name || ''}`"
+                                    class="nav-item flex items-center gap-3 min-h-[44px] pl-1 pr-4 rounded-2xl hover:bg-white/5 transition-all group/btn">
+                                    <span
+                                        class="w-11 h-11 bg-white/10 text-white rounded-full flex items-center justify-center border border-white/20 group-hover/btn:border-white/40 transition-all shrink-0">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                                         </svg>
-                                    </div>
+                                    </span>
                                     <span
-                                        class="text-[9px] font-bold uppercase tracking-widest text-slate-400 group-hover/btn:text-white">Share
-                                        Cartucho</span>
+                                        class="text-[12px] font-retro uppercase tracking-[0.2em] text-slate-300 group-hover/btn:text-white hidden sm:inline">Compartilhar</span>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                        <template x-for="game in filteredLibrary" :key="game.cartucho">
-                            <div @click="loadGame(game)" class="nav-item group cursor-pointer retro-card">
+                    <div
+                        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+                        <template x-for="game in filteredLibrary" :key="game.cartucho || game.cid">
+                            <div @click="loadGame(game)" @keydown.enter="loadGame(game)"
+                                @keydown.delete="confirmDelete(game)" role="button" tabindex="0"
+                                :aria-label="`Jogar ${game.name}`" class="nav-item group cursor-pointer retro-card">
                                 <div
                                     class="relative aspect-[3/4] rounded-2xl overflow-hidden mb-3 border border-white/10 shadow-xl transition-all">
-                                    <img :src="getMediaUrl(game.cover) || 'https://placehold.co/300x400?text=ROM+ID'"
+                                    <img :src="getMediaUrl(game.cover) || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20300%20400%22%3E%3Crect%20width%3D%22300%22%20height%3D%22400%22%20fill%3D%22%2314141f%22/%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%22298%22%20height%3D%22398%22%20fill%3D%22none%22%20stroke%3D%22%234f46e5%22%20stroke-opacity%3D%22.25%22%20stroke-width%3D%222%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20fill%3D%22%234f46e5%22%20fill-opacity%3D%22.55%22%20font-family%3D%22monospace%22%20font-size%3D%2236%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%20letter-spacing%3D%222%22%3ESEM%20CAPA%3C/text%3E%3C/svg%3E'"
                                         class="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700"
-                                        alt="Cover" loading="lazy" decoding="async">
+                                        :alt="`Capa de ${game.name}`" loading="lazy" decoding="async">
+
+                                    <!-- Excluir: só no hover/foco, e sempre pedindo confirmação -->
+                                    <button @click.stop="confirmDelete(game)"
+                                        :aria-label="`Remover ${game.name} da biblioteca`"
+                                        class="absolute top-1.5 right-1.5 z-20 w-11 h-11 rounded-full bg-black/70 backdrop-blur-sm border border-white/10 text-slate-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-red-500/80 hover:text-white hover:border-red-400/50 transition-all flex items-center justify-center">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
                                     <!-- Persistent Gradient Mask (Deeper and Taller) -->
                                     <div
                                         class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14]/60 to-transparent pointer-events-none">
@@ -518,13 +486,14 @@
                                     </div>
                                     <div class="absolute bottom-3 left-3 flex space-x-2">
                                         <span
-                                            class="bg-indigo-600 text-white text-[8px] font-retro px-2 py-1 rounded shadow-neon"
+                                            class="bg-indigo-600 text-white text-[12px] font-retro px-2 py-1 rounded shadow-neon"
                                             x-text="game.system"></span>
                                     </div>
                                 </div>
-                                <h4 class="text-sm font-bold text-white truncate group-hover:text-indigo-400 transition-colors font-orbitron tracking-tight"
+                                <h4 class="text-sm font-bold text-white line-clamp-2 group-hover:text-indigo-400 transition-colors font-orbitron tracking-tight leading-snug"
                                     x-text="game.name"></h4>
-                                <p class="text-[9px] text-slate-500 font-retro uppercase mt-1" x-text="game.system">
+                                <p class="text-[12px] text-slate-500 font-retro uppercase tracking-[0.12em] mt-1"
+                                    x-text="game.system">
                                 </p>
                             </div>
                         </template>
@@ -532,12 +501,219 @@
                         <!-- Empty State -->
                         <div x-show="filteredLibrary.length === 0" class="col-span-full py-20 text-center space-y-4">
                             <div class="text-6xl">🎮</div>
-                            <h3 class="text-xl font-bold text-slate-400">Your library is empty</h3>
-                            <p class="text-slate-600">Import a cartridge CID to fill your archive.</p>
+                            <h3 class="text-xl font-bold text-slate-300">Sua biblioteca está vazia</h3>
+                            <p class="text-slate-500 text-sm">Importe um CID para começar o acervo.</p>
                             <button @click="showImportModal = true"
-                                class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-indigo-600/20 transition-all text-sm">Add
-                                First Game</button>
+                                class="nav-item min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-indigo-600/20 transition-all text-sm">Adicionar
+                                o primeiro</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- PÁGINA: CONFIGURAÇÕES
+                     Deixou de ser modal: são quatro blocos que não cabiam numa caixa
+                     flutuante sem rolagem interna. Em tela larga viram duas colunas. -->
+                <div x-show="!isPlaying && activePage === 'Settings'" x-cloak class="max-w-6xl pb-10">
+                    <header class="mb-8">
+                        <h2 class="text-3xl font-black text-white font-orbitron tracking-tighter uppercase italic">
+                            Configurações</h2>
+                        <p class="text-[15px] text-slate-400 mt-2">Gateway, biblioteca e cache local.</p>
+                    </header>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                        <!-- Biblioteca -->
+                        <section class="glass-panel rounded-3xl p-6 sm:p-8 h-full flex flex-col">
+                            <h3 class="text-[16px] font-retro uppercase text-indigo-400 tracking-[0.2em] mb-3">
+                                Biblioteca</h3>
+                            <p class="text-[13px] text-slate-400 leading-relaxed mb-5">
+                                Exporte para levar a lista de cartuchos para outro aparelho.
+                            </p>
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <div class="bg-white/[0.02] p-4 rounded-xl border border-white/5">
+                                    <span class="block text-[13px] text-slate-400">Cartuchos</span>
+                                    <span class="block text-[20px] font-orbitron font-bold text-white tabular-nums mt-1"
+                                        x-text="library.length"></span>
+                                </div>
+                                <div class="bg-white/[0.02] p-4 rounded-xl border border-white/5">
+                                    <span class="block text-[13px] text-slate-400">Consoles</span>
+                                    <span class="block text-[20px] font-orbitron font-bold text-white tabular-nums mt-1"
+                                        x-text="totalDeConsoles"></span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button @click="exportLibrary()"
+                                    class="nav-item bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300 font-bold min-h-[44px] py-4 px-4 rounded-xl border border-indigo-600/30 transition-all flex flex-col items-center gap-2 text-[13px]">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    <span class="whitespace-nowrap">Exportar</span>
+                                </button>
+                                <button @click="$refs.libraryInput.click()"
+                                    class="nav-item bg-white/5 hover:bg-white/10 text-slate-300 font-bold min-h-[44px] py-4 px-4 rounded-xl border border-white/10 transition-all flex flex-col items-center gap-2 text-[13px]">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                    <span class="whitespace-nowrap">Importar</span>
+                                </button>
+                            </div>
+                            <input type="file" x-ref="libraryInput" x-on:change="importLibrary" class="hidden"
+                                accept=".json">
+                        </section>
+
+
+                        <!-- Cache local -->
+                        <section class="glass-panel rounded-3xl p-6 sm:p-8 h-full flex flex-col">
+                            <h3 class="text-[16px] font-retro uppercase text-indigo-400 tracking-[0.2em] mb-3">
+                                Cache local</h3>
+                            <p class="text-[13px] text-slate-400 leading-relaxed mb-5">
+                                Abra jogos mais rápido sem precisar de internet.
+                            </p>
+
+                            <!-- Quanto guardar: o teto do controle é o que este navegador concede -->
+                            <div class="bg-white/[0.02] p-4 rounded-xl border border-white/5 mb-4">
+                                <div class="flex items-baseline justify-between gap-4 mb-2">
+                                    <label for="limite-cache" class="text-[13px] text-slate-400">Guardar até</label>
+                                    <span class="text-[20px] font-orbitron font-bold whitespace-nowrap"
+                                        :class="cacheLimitBytes ? 'text-white' : 'text-slate-500'"
+                                        x-text="cacheLimiteRotulo"></span>
+                                </div>
+                                <input id="limite-cache" type="range" min="0" :max="cacheMaxBytes" :step="cachePasso"
+                                    :value="cacheLimitBytes" @change="pedirLimiteDeCache($event.target.value)"
+                                    :aria-valuetext="cacheLimiteRotulo"
+                                    class="w-full accent-indigo-500 cursor-pointer h-11">
+                                <div
+                                    class="flex justify-between text-[12px] font-retro text-slate-600 tracking-[0.1em]">
+                                    <span>Desligado</span>
+                                    <span x-text="formatBytes(cacheMaxBytes)"></span>
+                                </div>
+                            </div>
+
+                            <!-- O que está guardado agora -->
+                            <div
+                                class="flex items-baseline justify-between gap-4 bg-white/[0.02] p-4 rounded-xl border border-white/5 mb-4">
+                                <div class="min-w-0">
+                                    <span class="text-[13px] text-slate-400"
+                                        x-text="cacheStats.jogos === 1 ? '1 ROM guardada' : `${cacheStats.jogos} ROMs guardadas`"></span>
+                                    <span x-show="cacheStats.jogos > 0 && cachePersistente" x-cloak
+                                        class="block text-[12px] font-retro uppercase tracking-[0.1em] text-emerald-400/80 mt-1 whitespace-nowrap">Protegido
+                                        de limpeza</span>
+                                    <span x-show="cacheStats.jogos > 0 && !cachePersistente" x-cloak
+                                        class="block text-[12px] font-retro uppercase tracking-[0.1em] text-slate-500 mt-1 whitespace-nowrap">O
+                                        navegador pode limpar</span>
+                                </div>
+                                <span
+                                    class="text-[20px] font-orbitron font-bold text-white tabular-nums shrink-0 whitespace-nowrap"
+                                    x-text="formatBytes(cacheStats.bytes)"></span>
+                            </div>
+
+                            <button @click="clearCache()" :disabled="cacheStats.jogos === 0"
+                                class="nav-item w-full min-h-[44px] px-4 py-3 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 rounded-xl text-[12px] font-retro uppercase tracking-[0.2em] transition-all text-slate-300 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed">
+                                Liberar espaço
+                            </button>
+                        </section>
+
+                        <!-- Gateways: lista, escolha do preferido e acréscimo de novos -->
+                        <section class="glass-panel rounded-3xl p-6 sm:p-8 lg:col-span-2">
+                            <h3 class="text-[16px] font-retro uppercase text-indigo-400 tracking-[0.2em] mb-3">
+                                Gateways IPFS</h3>
+
+                            <div class="space-y-2 mb-4">
+                                <template x-for="g in knownGateways" :key="g">
+                                    <div
+                                        class="flex items-center justify-between gap-3 bg-white/[0.02] p-2 pl-3 rounded-xl border border-white/5">
+                                        <span class="min-w-0 flex-1 flex items-center gap-2">
+                                            <span class="text-[13px] text-slate-300 truncate" x-text="g"></span>
+                                            <span x-show="ipfsGateway === g"
+                                                class="shrink-0 text-[12px] font-retro uppercase tracking-[0.15em] text-indigo-300">em
+                                                uso</span>
+                                        </span>
+
+                                        <!-- Estado: testando (spinner), medido, ou ainda não testado -->
+                                        <template x-if="gatewayStatus[g] === 'testando'">
+                                            <span class="flex items-center gap-2 shrink-0 text-[13px] text-indigo-300">
+                                                <span
+                                                    class="w-3.5 h-3.5 border-2 border-indigo-400/40 border-t-indigo-400 rounded-full animate-spin"
+                                                    role="status" aria-label="Testando"></span>
+                                                <span class="hidden sm:inline">testando</span>
+                                            </span>
+                                        </template>
+                                        <template x-if="gatewayStatus[g] !== 'testando'">
+                                            <span class="text-[13px] font-mono shrink-0 tabular-nums"
+                                                :class="gatewayStatus[g] && gatewayStatus[g].includes('ms') ? 'text-emerald-400' : (gatewayStatus[g] ? 'text-red-400' : 'text-slate-500')"
+                                                x-text="gatewayStatus[g] || '—'"></span>
+                                        </template>
+
+                                        <button @click="ipfsGateway = g; saveGateway()"
+                                            :aria-label="`Usar o gateway ${g} como primeira opção`" :title="`Usar ${g}`"
+                                            :class="ipfsGateway === g ? 'text-indigo-300 bg-indigo-600/20' : 'text-indigo-400'"
+                                            class="nav-item w-11 h-11 shrink-0 flex items-center justify-center hover:bg-white/10 rounded-xl transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                            </svg>
+                                        </button>
+
+                                        <!-- Só os que o usuário acrescentou podem sair da lista -->
+                                        <button x-show="isCustomGateway(g)" @click="removeCustomGateway(g)"
+                                            :aria-label="`Remover o gateway ${g}`" :title="`Remover ${g}`"
+                                            class="nav-item w-11 h-11 shrink-0 flex items-center justify-center text-slate-500 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </template>
+
+                                <!-- Último item da lista: acrescentar um gateway -->
+                                <div class="pt-1">
+                                    <button x-show="!showAddGateway"
+                                        @click="showAddGateway = true; $nextTick(() => $refs.novoGateway?.focus())"
+                                        class="nav-item w-full min-h-[44px] flex items-center gap-3 px-3 rounded-xl border border-dashed border-white/15 text-slate-400 hover:text-white hover:border-indigo-500/40 hover:bg-white/5 transition-all">
+                                        <span
+                                            class="w-6 h-6 rounded-full border border-white/20 flex items-center justify-center text-[15px] leading-none shrink-0">+</span>
+                                        <span class="text-[13px]">Adicionar outro gateway</span>
+                                    </button>
+
+                                    <div x-show="showAddGateway" x-cloak class="space-y-3">
+                                        <input type="text" x-ref="novoGateway" x-model="newGateway"
+                                            @keydown.enter="addCustomGateway()" @keydown.escape="cancelAddGateway()"
+                                            :disabled="addingGateway" placeholder="ipfs.exemplo.com"
+                                            aria-label="Endereço do gateway novo"
+                                            class="w-full bg-black/40 border border-white/10 rounded-xl px-4 min-h-[44px] py-3 text-[14px] font-mono focus:outline-none focus:border-indigo-500/50 transition-all disabled:opacity-50">
+                                        <p class="text-[13px] text-slate-500">
+                                            Só o endereço; o caminho <span class="font-mono">/ipfs/</span> é
+                                            acrescentado
+                                            sozinho. O gateway é testado antes de entrar na lista.
+                                        </p>
+                                        <p x-show="addGatewayError" x-cloak class="text-[13px] text-red-300"
+                                            x-text="addGatewayError"></p>
+                                        <div class="flex gap-3">
+                                            <button @click="addCustomGateway()" :disabled="addingGateway || !newGateway"
+                                                class="nav-item flex-1 min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-retro text-[12px] tracking-[0.2em] uppercase py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                                                <span x-show="addingGateway"
+                                                    class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                                                <span x-text="addingGateway ? 'Testando' : 'Adicionar'"></span>
+                                            </button>
+                                            <button @click="cancelAddGateway()" :disabled="addingGateway"
+                                                class="nav-item min-h-[44px] bg-white/5 hover:bg-white/10 text-slate-300 font-retro text-[12px] tracking-[0.2em] uppercase py-3 px-5 rounded-xl border border-white/10 transition-all">
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button @click="testGateways()" :disabled="testingGateways"
+                                class="nav-item w-full min-h-[44px] px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[12px] font-retro uppercase tracking-[0.2em] transition-all text-slate-300 hover:text-white flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-wait">
+                                <span x-show="testingGateways"
+                                    class="w-3.5 h-3.5 border-2 border-indigo-400/40 border-t-indigo-400 rounded-full animate-spin"></span>
+                                <span x-text="testingGateways ? 'Testando gateways…' : 'Testar agora'"></span>
+                            </button>
+                        </section>
                     </div>
                 </div>
 
@@ -555,22 +731,47 @@
                                 <div class="w-full max-w-md space-y-4 px-10">
                                     <div class="boot-text text-xl animate-pulse">SYSTEM_BOOT_SEQUENCE</div>
                                     <div class="space-y-1">
-                                        <div class="flex justify-between text-[10px] font-retro text-indigo-500/60">
-                                            <span>INITIALIZING_CORE</span>
-                                            <span x-text="currentGame?.system"></span>
+                                        <div class="flex justify-between text-[12px] font-retro text-indigo-500/60">
+                                            <span
+                                                x-text="romProgress > 0 && romProgress < 100 ? 'DOWNLOADING_ROM' : 'INITIALIZING_CORE'"></span>
+                                            <span
+                                                x-text="romProgress > 0 ? romProgress + '%' : (currentGame?.system || '')"></span>
                                         </div>
-                                        <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                                            <div class="h-full bg-indigo-500 animate-[loading_2s_ease-in-out_infinite]">
+                                        <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden"
+                                            role="progressbar" :aria-valuenow="romProgress > 0 ? romProgress : null"
+                                            aria-valuemin="0" aria-valuemax="100">
+                                            <!-- Progresso real quando o tamanho é conhecido; senão volta à animação indeterminada -->
+                                            <div x-show="romProgress > 0"
+                                                class="h-full bg-indigo-500 transition-[width] duration-200"
+                                                :style="`width: ${romProgress}%`"></div>
+                                            <div x-show="romProgress <= 0"
+                                                class="h-full bg-indigo-500 animate-[loading_2s_ease-in-out_infinite]">
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="text-[9px] font-retro text-slate-600 space-y-1">
+                                    <div class="text-[12px] font-retro text-slate-600 space-y-1">
                                         <p>> MOUNTING_IPFS_GATEWAY...</p>
                                         <p>> VERIFYING_ROM_INTEGRITY...</p>
                                         <p>> LOADING_ASSETS...</p>
-                                        <p class="text-indigo-400/80 animate-pulse">> CONNECTED_VIA: <span
-                                                x-text="activeGatewayName || 'SECURE_TUNNEL'"></span></p>
+                                        <p class="text-indigo-400/80 animate-pulse">
+                                            > <span x-text="romFromCache ? 'LOADED_FROM' : 'CONNECTED_VIA'"></span>:
+                                            <span x-text="activeGatewayName || 'SECURE_TUNNEL'"></span>
+                                        </p>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Falha de boot: mostra o erro em vez de recarregar (reload aqui vira loop) -->
+                            <div class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/95 backdrop-blur-md px-10 text-center"
+                                x-show="emulatorError" x-cloak>
+                                <div class="text-red-400 text-2xl font-retro tracking-widest mb-4">BOOT_FAILED</div>
+                                <p class="text-[12px] font-retro text-slate-400 max-w-md leading-relaxed"
+                                    x-text="emulatorError"></p>
+                                <div class="flex items-center space-x-3 mt-8">
+                                    <button @click="emulatorError = ''; loadGame(currentGame)"
+                                        class="nav-item bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-[12px] font-retro tracking-widest uppercase transition-all active:scale-95">Tentar_De_Novo</button>
+                                    <button @click="stopGame()"
+                                        class="nav-item bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white px-5 py-2.5 rounded-xl text-[12px] font-retro tracking-widest uppercase border border-white/5 transition-all active:scale-95">Voltar</button>
                                 </div>
                             </div>
                         </div>
@@ -580,8 +781,8 @@
                     <div
                         class="w-full mt-3 md:mt-8 p-3 md:p-4 glass-panel rounded-2xl flex items-center justify-between shrink-0">
                         <div class="flex items-center space-x-3 md:space-x-6 text-slate-400 min-w-0">
-                            <button @click="stopGame(currentGame?.system || 'Home')"
-                                class="nav-item hover:text-white transition-all flex items-center space-x-2 group active:scale-95 shrink-0">
+                            <button @click="stopGame(currentGame?.system || 'Home')" aria-label="Sair do jogo"
+                                class="nav-item min-h-[44px] px-2 -ml-2 rounded-xl hover:text-white hover:bg-white/5 transition-all flex items-center space-x-2 group active:scale-95 shrink-0">
                                 <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none"
                                     stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -594,7 +795,7 @@
                                 <h2 class="text-sm md:text-xl font-black text-white font-orbitron italic tracking-tighter leading-none truncate"
                                     x-text="currentGame?.name || 'Loading...'"></h2>
                                 <span
-                                    class="text-[8px] md:text-[9px] font-retro text-indigo-400 uppercase tracking-[0.2em] mt-1 truncate"
+                                    class="text-[12px] font-retro text-indigo-400 uppercase tracking-[0.2em] mt-1 truncate"
                                     x-text="currentGame?.system || 'CORE'"></span>
                             </div>
                         </div>
@@ -602,15 +803,14 @@
                         <!-- Player Controls -->
                         <div class="flex items-center space-x-2 md:space-x-4 shrink-0">
                             <!-- Share Button -->
-                            <button @click="shareCartucho(currentGame)"
-                                class="flex items-center space-x-2 md:space-x-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white px-3 py-2 md:px-5 md:py-2.5 rounded-xl border border-white/5 transition-all group active:scale-95">
+                            <button @click="shareCartucho(currentGame)" aria-label="Compartilhar cartucho"
+                                class="nav-item min-h-[44px] flex items-center justify-center space-x-2 md:space-x-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white px-4 md:px-5 rounded-xl border border-white/5 transition-all group active:scale-95">
                                 <svg class="h-4 w-4 group-hover:text-indigo-400 transition-colors" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                                 </svg>
-                                <span
-                                    class="text-[9px] md:text-[10px] font-retro tracking-widest uppercase truncate"><span
+                                <span class="text-[12px] font-retro tracking-widest uppercase truncate"><span
                                         class="md:hidden">Share</span><span class="hidden md:inline">Share
                                         Cartucho</span></span>
                             </button>
@@ -622,31 +822,35 @@
         </div>
 
         <!-- Import Modal (Redesigned with Scanner & Preview) -->
-        <div x-show="showImportModal" x-cloak
+        <div x-show="showImportModal" x-cloak role="dialog" aria-modal="true" aria-label="Importar cartucho"
             class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+            <!-- max-h + rolagem interna: em tela baixa (celular deitado, ou com o teclado
+                 virtual aberto) o modal passava da viewport e os botões ficavam inalcançáveis -->
             <div @click.away="resetImport()"
-                class="glass-panel w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl border-indigo-500/20 relative">
+                class="glass-panel w-full max-w-lg rounded-3xl shadow-2xl border-indigo-500/20 relative max-h-[92vh] overflow-y-auto">
 
-                <!-- Close Button -->
-                <button @click="resetImport()"
-                    class="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors z-10">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
-                        </path>
-                    </svg>
-                </button>
-
+                <!-- Cabeçalho fixo: com o modal rolando, um X posicionado sobre o conteúdo
+                     saía da tela junto com a rolagem e não dava para fechar. -->
                 <div
-                    class="px-8 pt-10 pb-6 border-b border-white/5 bg-gradient-to-br from-indigo-600/10 to-transparent">
-                    <h3 class="text-2xl font-black text-white font-orbitron tracking-tighter uppercase italic">
-                        Add_Cartucho</h3>
-                    <p class="text-slate-500 text-[10px] font-retro tracking-wider uppercase mt-2 opacity-80">
-                        Synchronizing with IPFS Network...</p>
+                    class="sticky top-0 z-10 flex items-start gap-4 px-6 sm:px-8 pt-6 pb-5 [@media(max-height:700px)]:pt-4 [@media(max-height:700px)]:pb-3 border-b border-white/5 bg-cartucho-sidebar/95 backdrop-blur-md rounded-t-3xl">
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-2xl [@media(max-height:700px)]:text-xl font-black text-white font-orbitron tracking-tighter uppercase italic">
+                            Add_Cartucho</h2>
+                        <p class="text-[13px] text-slate-400 mt-1 [@media(max-height:700px)]:hidden">Cole o CID do cartucho ou leia o QR
+                            code.</p>
+                    </div>
+                    <button @click="resetImport()" aria-label="Fechar"
+                        class="nav-item -mr-2 -mt-1 w-11 h-11 shrink-0 flex items-center justify-center rounded-xl text-slate-500 hover:text-white hover:bg-white/5 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
                 <!-- Tab Switcher -->
-                <div x-show="!previewGame" class="flex p-2 bg-black/40 mx-8 mt-6 rounded-2xl border border-white/5">
+                <div x-show="!previewGame" class="flex p-2 bg-black/40 mx-6 sm:mx-8 mt-6 [@media(max-height:700px)]:mt-3 [@media(max-height:700px)]:p-1 rounded-2xl border border-white/5">
                     <button @click="importMode = 'scan'; startScanner()"
-                        class="flex-1 py-3 text-[10px] font-retro tracking-widest uppercase transition-all rounded-xl flex items-center justify-center space-x-2"
+                        class="flex-1 py-3 text-[12px] font-retro tracking-widest uppercase transition-all rounded-xl flex items-center justify-center space-x-2"
                         :class="importMode === 'scan' ? 'bg-indigo-600 text-white shadow-neon' : 'text-slate-500 hover:text-slate-300'">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -657,7 +861,7 @@
                         <span>Camera</span>
                     </button>
                     <button @click="importMode = 'manual'; stopScanner()"
-                        class="flex-1 py-3 text-[10px] font-retro tracking-widest uppercase transition-all rounded-xl flex items-center justify-center space-x-2"
+                        class="flex-1 py-3 text-[12px] font-retro tracking-widest uppercase transition-all rounded-xl flex items-center justify-center space-x-2"
                         :class="importMode === 'manual' ? 'bg-indigo-600 text-white shadow-neon' : 'text-slate-500 hover:text-slate-300'">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -667,20 +871,20 @@
                     </button>
                 </div>
 
-                <div class="p-8 space-y-6">
+                <div class="p-6 sm:p-8 space-y-6 [@media(max-height:700px)]:p-4 [@media(max-height:700px)]:space-y-3">
                     <!-- Scanner View -->
                     <div x-show="importMode === 'scan' && !previewGame"
                         class="relative overflow-hidden rounded-3xl bg-black/50 border border-white/10 aspect-video flex items-center justify-center">
                         <div id="reader" class="w-full"></div>
                         <div x-show="!html5QrCode?.isScanning"
                             class="absolute inset-0 flex items-center justify-center bg-black/60">
-                            <span class="font-retro text-[10px] text-indigo-400">Initializing Core...</span>
+                            <span class="font-retro text-[12px] text-indigo-400">Initializing Core...</span>
                         </div>
                     </div>
 
                     <!-- Manual View -->
                     <div x-show="importMode === 'manual'" class="space-y-4">
-                        <label class="block text-[10px] font-retro text-slate-500 uppercase tracking-widest px-1">IPFS
+                        <label class="block text-[12px] font-retro text-slate-500 uppercase tracking-widest px-1">IPFS
                             Cartucho_ID (CID)</label>
                         <input type="text" x-model="newCID" @input.debounce.500ms="onManualInput()"
                             placeholder="Qm... or bafy..."
@@ -698,77 +902,90 @@
                                 class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin">
                             </div>
                             <span
-                                class="font-retro text-[9px] text-indigo-400 tracking-widest uppercase">Fetching_Archive...</span>
+                                class="font-retro text-[12px] text-indigo-400 tracking-widest uppercase">Fetching_Archive...</span>
                         </div>
 
                         <!-- Game Preview -->
                         <div x-show="previewGame && !scanPending" class="flex items-start space-x-6">
                             <div
                                 class="w-24 aspect-[3/4] rounded-xl overflow-hidden shadow-2xl border border-white/10 shrink-0">
-                                <img :src="previewGame?.cover || 'https://placehold.co/300x400?text=ROM'"
+                                <img :alt="previewGame ? `Capa de ${previewGame.name}` : 'Pré-visualização do cartucho'"
+                                    decoding="async"
+                                    :src="getMediaUrl(previewGame?.cover) || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20300%20400%22%3E%3Crect%20width%3D%22300%22%20height%3D%22400%22%20fill%3D%22%2314141f%22/%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%22298%22%20height%3D%22398%22%20fill%3D%22none%22%20stroke%3D%22%234f46e5%22%20stroke-opacity%3D%22.25%22%20stroke-width%3D%222%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20fill%3D%22%234f46e5%22%20fill-opacity%3D%22.55%22%20font-family%3D%22monospace%22%20font-size%3D%2236%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%20letter-spacing%3D%222%22%3ESEM%20CAPA%3C/text%3E%3C/svg%3E'"
                                     class="w-full h-full object-cover">
                             </div>
                             <div class="flex-1 min-w-0 py-1">
                                 <span
-                                    class="bg-indigo-600 text-white text-[8px] font-retro px-2 py-0.5 rounded uppercase tracking-tighter"
+                                    class="bg-indigo-600 text-white text-[12px] font-retro px-2 py-0.5 rounded uppercase tracking-tighter"
                                     x-text="previewGame?.system"></span>
                                 <h4 class="text-lg font-bold text-white mt-2 truncate font-orbitron"
                                     x-text="previewGame?.name"></h4>
-                                <p class="text-[10px] text-slate-500 font-retro uppercase mt-1 line-clamp-2"
+                                <p class="text-[12px] text-slate-500 font-retro uppercase mt-1 tracking-[0.12em] line-clamp-2"
                                     x-text="previewGame?.description"></p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="flex items-center space-x-4 pt-2">
+                    <!-- Ações: empilhadas no celular (três lado a lado estouram 390px), com a
+                         principal em cima, e grudadas no rodapé para não sumirem abaixo da
+                         dobra quando o modal rola em tela baixa. -->
+                    <div
+                        class="sticky bottom-0 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 px-6 sm:px-8 pt-3 pb-6 sm:pb-8 [@media(max-height:700px)]:-mx-4 [@media(max-height:700px)]:-mb-4 [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:pb-4 [@media(max-height:700px)]:pt-2 bg-cartucho-sidebar/95 backdrop-blur-md border-t border-white/5 flex flex-col-reverse sm:flex-row sm:items-center gap-3 sm:gap-4">
                         <button @click="resetImport()"
-                            class="flex-1 px-6 py-4 rounded-2xl text-slate-500 font-bold hover:bg-white/5 transition-all text-xs uppercase tracking-widest font-retro">Abort</button>
+                            class="nav-item w-full sm:flex-1 min-h-[44px] px-4 py-4 [@media(max-height:700px)]:py-2 rounded-2xl text-slate-500 font-bold hover:bg-white/5 transition-all text-xs uppercase tracking-widest font-retro">Cancelar</button>
+                        <!-- Guardar sem jogar: útil para montar a biblioteca de uma vez -->
+                        <button @click="importCartucho({ play: false })" :disabled="!newCID"
+                            :class="!newCID ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:bg-white/10 active:scale-95'"
+                            class="nav-item w-full sm:flex-1 min-h-[44px] px-4 py-4 [@media(max-height:700px)]:py-2 rounded-2xl bg-white/5 border border-white/10 text-slate-300 font-bold transition-all text-xs uppercase tracking-widest font-retro whitespace-nowrap">
+                            Guardar
+                        </button>
                         <button @click="importCartucho()" :disabled="!newCID"
                             :class="!newCID ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:scale-105 active:scale-95 shadow-lg shadow-indigo-600/20'"
-                            class="flex-[2] bg-indigo-600 text-white font-bold py-4 px-6 rounded-2xl transition-all text-xs uppercase tracking-widest font-retro flex items-center justify-center space-x-2">
+                            class="nav-item w-full sm:flex-[1.4] min-h-[44px] bg-indigo-600 text-white font-bold py-4 [@media(max-height:700px)]:py-2 px-4 rounded-2xl transition-all text-xs uppercase tracking-widest font-retro flex items-center justify-center gap-2 whitespace-nowrap">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 4v16m8-8H4" />
                             </svg>
-                            <span>Insert_Cartucho</span>
+                            <span>Jogar</span>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div x-show="showShareModal" x-cloak
+        <div x-show="showShareModal" x-cloak role="dialog" aria-modal="true" aria-label="Compartilhar cartucho"
             class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
             <div @click.away="showShareModal = false"
-                class="glass-panel w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border-indigo-500/20 relative">
+                class="glass-panel w-full max-w-md rounded-3xl shadow-2xl border-indigo-500/20 relative max-h-[92vh] overflow-y-auto">
 
-                <!-- Close Button -->
-                <button @click="showShareModal = false"
-                    class="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
-                        </path>
-                    </svg>
-                </button>
-
+                <!-- Cabeçalho fixo, pelo mesmo motivo do modal de importar -->
                 <div
-                    class="px-8 pt-10 pb-6 text-center border-b border-white/5 bg-gradient-to-b from-indigo-600/10 to-transparent">
-                    <h3 class="text-2xl font-black text-white font-orbitron tracking-tighter uppercase italic">
-                        Share_Cartucho</h3>
-                    <p class="text-indigo-400 text-[10px] font-retro tracking-widest uppercase mt-2 opacity-80"
-                        x-text="shareGame?.name"></p>
+                    class="sticky top-0 z-10 flex items-start gap-4 px-6 sm:px-8 pt-6 pb-5 [@media(max-height:700px)]:pt-4 [@media(max-height:700px)]:pb-3 border-b border-white/5 bg-cartucho-sidebar/95 backdrop-blur-md rounded-t-3xl">
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-2xl [@media(max-height:700px)]:text-xl font-black text-white font-orbitron tracking-tighter uppercase italic">
+                            Share_Cartucho</h2>
+                        <p class="text-indigo-400 text-[12px] font-retro tracking-widest uppercase mt-1 opacity-80 truncate"
+                            x-text="shareGame?.name"></p>
+                    </div>
+                    <button @click="showShareModal = false" aria-label="Fechar"
+                        class="nav-item -mr-2 -mt-1 w-11 h-11 shrink-0 flex items-center justify-center rounded-xl text-slate-500 hover:text-white hover:bg-white/5 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
-                <div class="p-8 space-y-8 flex flex-col items-center">
-                    <!-- QR Code Wrapper -->
-                    <div class="relative group">
+                <div class="p-6 sm:p-8 space-y-8 [@media(max-height:700px)]:p-4 [@media(max-height:700px)]:space-y-4 flex flex-col items-center">
+                    <!-- QR Code. Some inteiro em tela muito baixa: um código de 100px não
+                         serve para ninguém apontar a câmera, e o link abaixo resolve. -->
+                    <div class="relative group [@media(max-height:420px)]:hidden">
                         <div
                             class="absolute -inset-4 bg-indigo-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         </div>
                         <div
                             class="relative bg-white p-4 rounded-3xl shadow-2xl transform transition-transform duration-500 group-hover:scale-105">
-                            <div id="qrcode-container" class="w-[200px] h-[200px]"></div>
+                            <div id="qrcode-container" class="w-[200px] h-[200px] [@media(max-height:700px)]:w-[140px] [@media(max-height:700px)]:h-[140px] [@media(max-height:700px)]:[&>*]:!w-full [@media(max-height:700px)]:[&>*]:!h-full"></div>
                         </div>
                     </div>
 
@@ -776,8 +993,8 @@
                     <div class="w-full space-y-3">
                         <div class="flex items-center justify-between px-2">
                             <label
-                                class="text-[9px] font-retro text-slate-500 uppercase tracking-widest">Access_URL</label>
-                            <span class="text-[8px] font-mono text-indigo-400/50">WEB_LINK</span>
+                                class="text-[12px] font-retro text-slate-500 uppercase tracking-widest">Access_URL</label>
+                            <span class="text-[12px] font-mono text-indigo-400/50">WEB_LINK</span>
                         </div>
                         <div class="relative group">
                             <input type="text" readonly :value="shareLink"
@@ -794,1010 +1011,14 @@
                     </div>
                 </div>
 
-                <!-- Footer Hint -->
+                <!-- Footer Hint (sai junto com o QR em tela muito baixa) -->
                 <div class="px-8 pb-8 text-center pt-2">
-                    <p class="text-[8px] font-retro text-slate-600 uppercase tracking-[0.2em]">Scan QR Code to play
-                        instantly on mobile</p>
-                </div>
-            </div>
-        </div>
-        <div x-show="showSettingsModal" x-cloak
-            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div @click.away="showSettingsModal = false"
-                class="bg-cartucho-sidebar border border-white/10 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl">
-                <div class="px-8 pt-8 pb-6 border-b border-white/5 bg-gradient-to-br from-indigo-600/10 to-transparent">
-                    <h3 class="text-2xl font-black text-white font-orbitron tracking-tighter uppercase italic">
-                        Settings</h3>
-                    <p class="text-slate-500 text-sm mt-2 font-retro text-[10px] tracking-wider uppercase opacity-80">
-                        Core configuration and library management.</p>
-                </div>
-
-                <div class="p-8 space-y-6">
-                    <div class="space-y-4">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest">Library
-                            Management</label>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <button @click="exportLibrary()"
-                                class="nav-item bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 font-bold py-4 px-6 rounded-xl border border-indigo-600/30 transition-all flex flex-col items-center space-y-2">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                <span>Export JSON</span>
-                            </button>
-
-                            <button @click="$refs.libraryInput.click()"
-                                class="nav-item bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 font-bold py-4 px-6 rounded-xl border border-indigo-600/30 transition-all flex flex-col items-center space-y-2">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                </svg>
-                                <span>Import JSON</span>
-                            </button>
-                        </div>
-                        <input type="file" x-ref="libraryInput" x-on:change="importLibrary" class="hidden"
-                            accept=".json">
-                    </div>
-
-                    <div class="space-y-4 pt-4 border-t border-white/5 text-slate-100">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest">IPFS
-                            Gateway</label>
-                        <div class="space-y-3">
-                            <input type="text" x-model="ipfsGateway" @keydown.enter="saveGateway()"
-                                placeholder="https://ipfs.io/ipfs/"
-                                class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-indigo-500/50 transition-all">
-
-                            <div class="flex gap-2">
-                                <button @click="saveGateway()"
-                                    class="nav-item flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-retro uppercase tracking-wider transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center space-x-2">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <span>Save_Settings</span>
-                                </button>
-                                <button @click="ipfsGateway = 'https://ipfs.io/ipfs/'; saveGateway()"
-                                    class="nav-item px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-retro uppercase tracking-wider transition-all">
-                                    Reset
-                                </button>
-                            </div>
-                            <p class="text-[9px] text-slate-500 font-retro uppercase tracking-wider leading-relaxed">
-                                Use a custom gateway for faster loading. Default: https://ipfs.io/ipfs/
-                            </p>
-
-                            <!-- Gateway Health Section -->
-                            <div class="mt-4 pt-4 border-t border-white/5">
-                                <h4 class="text-[10px] font-retro uppercase text-indigo-400 mb-3 tracking-widest">
-                                    Gateway Health</h4>
-                                <div class="space-y-2 mb-4">
-                                    <template x-for="g in knownGateways" :key="g">
-                                        <div
-                                            class="flex items-center justify-between bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                                            <span class="text-[9px] text-slate-400 truncate max-w-[150px]"
-                                                x-text="g"></span>
-                                            <div class="flex items-center space-x-2">
-                                                <span class="text-[9px] font-mono"
-                                                    :class="gatewayStatus[g] && gatewayStatus[g].includes('ms') ? 'text-green-400' : 'text-red-400'"
-                                                    x-text="gatewayStatus[g] || 'Ready'"></span>
-                                                <button @click="ipfsGateway = g; saveGateway()"
-                                                    class="p-1 hover:bg-white/10 rounded transition-colors"
-                                                    title="Use this gateway">
-                                                    <svg class="w-3 h-3 text-indigo-400" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                                <button @click="testGateways()"
-                                    class="w-full px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[9px] font-retro uppercase tracking-widest transition-all text-slate-400 hover:text-white">
-                                    Refresh_Health_Check
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="pt-4 border-t border-white/5 flex justify-end">
-                        <button @click="showSettingsModal = false"
-                            class="nav-item text-slate-500 hover:text-white font-bold transition-all">Close</button>
-                    </div>
+                    <p class="text-[13px] text-slate-400 [@media(max-height:420px)]:hidden">Aponte a câmera do celular para o código e o jogo abre lá.</p>
                 </div>
             </div>
         </div>
 
-        <!-- EmulatorJS Config Initializing -->
-        <script>
-            var EJS_player = '#game-container';
-            var EJS_core = 'nes';
-            var EJS_gameUrl = '';
-            var EJS_gameID = '';
-            var EJS_gameName = '';
-            var EJS_backgroundImage = '';
-            var EJS_pathtodata = 'https://cdn.emulatorjs.org/latest/data/';
-            var EJS_language = navigator.language || 'en-US';
-            var EJS_disableAutoLang = true;
-            var EJS_cheats = [];
-            var EJS_biosUrl = '';
-            var EJS_backgroundColor = '#0a0a0c';
-            var EJS_color = '#4f46e5';
-            var EJS_startOnLoaded = true;
-            var EJS_defaultOptions = {
-                'save-state-location': 'browser',
-                'save-state-slot': 1
-            };
-            var EJS_saveStateLocation = 'browser';
-        </script>
-        <!-- The loader script will be added dynamically in loadGame() -->
-
-        <script>
-            function cartuchoApp() {
-                // EmulatorJS Supported Cores
-                const SUPPORTED_CORES = [
-                    'nes', 'snes', 'gb', 'gba', 'vb', 'nds', 'a5200', 'mame2003', 'arcade', 'psx', 'jaguar', 'lynx', 'segaSaturn', 'segaMD', 'segaGG', 'segaCD', 'n64', '3do', 'atari7800', 'atari2600', 'sega32x', 'segaMS', 'c64', 'c128', 'pet', 'plus4', 'vic20', 'amiga', 'coleco', 'pce', 'pcfx', 'ngp', 'ws', 'dos', 'psp'
-                ];
-
-                return {
-                    // Global State
-                    library: [],
-                    activePage: 'Home',
-                    activeGatewayName: '',
-                    sidebarOpen: false,
-                    isPlaying: false,
-                    isEmulatorLoading: false,
-                    currentGame: null,
-                    searchQuery: '',
-                    ipfsGateway: localStorage.getItem('cartucho_gateway') || 'https://ipfs.io/ipfs/',
-                    knownGateways: [
-                        'https://gateway.pinata.cloud/ipfs/',
-                        'https://cloudflare-ipfs.com/ipfs/',
-                        'https://nftstorage.link/ipfs/',
-                        'https://dweb.link/ipfs/',
-                        'https://cf-ipfs.com/ipfs/',
-                        'https://storry.tv/ipfs/',
-                        'https://ipfs.io/ipfs/',
-                        'http://127.0.0.1:8080/ipfs/'
-                    ],
-                    gatewayStatus: {},
-                    showImportModal: false,
-                    showShareModal: false,
-                    showSettingsModal: false,
-
-                    // Gamepad State
-                    gamepadConnected: false,
-                    showGamepadToast: false,
-                    showEjectToast: false,
-                    focusIndex: -1,
-                    lastGamepadInput: 0,
-                    gamepadTimer: null,
-                    ejectTimerStart: null,
-                    cachedFocusElements: null,
-                    // Import State
-                    importMode: 'manual', // 'manual' or 'scan'
-                    scanPending: false,
-                    previewGame: null,
-                    html5QrCode: null,
-                    newCID: '', // This seems to be an import state variable
-                    copyFeedback: false,
-                    shareGame: null,
-
-                    getMediaUrl(cidOrUrl) {
-                        if (!cidOrUrl) return null;
-                        if (cidOrUrl.startsWith('http') || cidOrUrl.startsWith('blob:')) return cidOrUrl;
-                        return `${this.ipfsGateway}${cidOrUrl}`;
-                    },
-                    get shareLink() {
-                        if (!this.shareGame) return '';
-                        const cid = this.shareGame.cartucho;
-                        const origin = window.location.origin === 'null' ? '' : window.location.origin;
-                        return `${origin}${window.location.pathname}?cartucho=${cid}`;
-                    },
-                    get menuItems() {
-                        const base = [
-                            { name: 'Home', system: 'all', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>' }
-                        ];
-
-                        // Extract unique systems from library
-                        const systems = [...new Set(this.library.map(g => g.system))].filter(Boolean);
-
-                        systems.forEach(sys => {
-                            base.push({
-                                name: sys,
-                                system: sys,
-                                icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>' // Fallback gamepad icon
-                            });
-                        });
-
-                        return base;
-                    },
-
-                    initData() {
-                        const stored = localStorage.getItem('cartucho_library');
-                        if (stored) {
-                            try {
-                                this.library = JSON.parse(stored);
-                            } catch (e) {
-                                console.error("Could not parse library", e);
-                            }
-                        }
-
-                        // Set up Alpine execution watchers to invalidate the DOM focus cache
-                        this.$watch('showImportModal', () => { this.$nextTick(() => this.updateFocusCache()) });
-                        this.$watch('showShareModal', () => { this.$nextTick(() => this.updateFocusCache()) });
-                        this.$watch('showSettingsModal', () => { this.$nextTick(() => this.updateFocusCache()) });
-                        this.$watch('activePage', () => { this.$nextTick(() => this.updateFocusCache()) });
-                        this.$watch('library', () => { this.$nextTick(() => this.updateFocusCache()) });
-                        this.$watch('searchQuery', () => { this.$nextTick(() => this.updateFocusCache()) });
-
-                        // Ensure gateway ends with slash
-                        if (!this.ipfsGateway.endsWith('/')) this.ipfsGateway += '/';
-
-                        // Check for ?cartucho=CID query parameter
-                        const urlParams = new URLSearchParams(window.location.search);
-
-                        const page = urlParams.get('page');
-                        if (page && this.menuItems.some(i => i.name === page)) {
-                            this.activePage = page;
-                        }
-
-                        const initialCid = urlParams.get('cartucho');
-                        if (initialCid) {
-                            this.loadFromQuery(initialCid);
-                        }
-                        this.initGamepad();
-                    },
-
-                    initGamepad() {
-                        window.addEventListener("gamepadconnected", (e) => {
-                            // Only first gamepad controls the UI
-                            if (e.gamepad.index === 0) {
-                                console.log("Gamepad connected", e.gamepad.id);
-                                this.gamepadConnected = true;
-                                this.updateGamepadToast();
-                                this.startGamepadLoop();
-                            }
-                        });
-
-                        window.addEventListener("gamepaddisconnected", (e) => {
-                            if (e.gamepad.index === 0) {
-                                console.log("Gamepad disconnected", e.gamepad.id);
-                                this.gamepadConnected = false;
-                                this.stopGamepadLoop();
-                            }
-                        });
-
-                        // Handle visibility changes to throttle gamepad polling
-                        document.addEventListener("visibilitychange", () => {
-                            if (document.hidden) {
-                                this.stopGamepadLoop();
-                            } else if (this.gamepadConnected && !this.gamepadTimer) {
-                                this.startGamepadLoop();
-                            }
-                        });
-
-                        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-                        if (gamepads[0]) {
-                            this.gamepadConnected = true;
-                            this.updateGamepadToast();
-                            this.startGamepadLoop();
-                        }
-                    },
-
-                    startGamepadLoop() {
-                        if (this.gamepadTimer) return;
-                        this.gamepadLoop();
-                    },
-
-                    stopGamepadLoop() {
-                        if (this.gamepadTimer) {
-                            cancelAnimationFrame(this.gamepadTimer);
-                            this.gamepadTimer = null;
-                        }
-                        const focused = document.querySelector('.gamepad-focus');
-                        if (focused) focused.classList.remove('gamepad-focus');
-                        this.focusIndex = -1;
-                    },
-
-                    gamepadLoop() {
-                        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-                        const gp = gamepads[0];
-
-                        if (gp) {
-                            if (!this.isPlaying) {
-                                this.handleGamepadInput(gp);
-                            } else {
-                                this.handleEjectShortcut(gp);
-                            }
-                        }
-
-                        this.gamepadTimer = requestAnimationFrame(() => this.gamepadLoop());
-                    },
-
-                    handleEjectShortcut(gp) {
-                        const startPressed = gp.buttons[9]?.pressed;
-                        const dpadUp = gp.buttons[12]?.pressed;
-
-                        // Check analog stick Y (axis 1)
-                        const stickY = gp.axes.length > 1 ? gp.axes[1] : 0;
-                        const upPressed = dpadUp || stickY < -0.5;
-
-                        if (startPressed && upPressed) {
-                            if (!this.ejectTimerStart) {
-                                this.ejectTimerStart = Date.now();
-                                this.showEjectToast = true;
-                            } else if (Date.now() - this.ejectTimerStart >= 3000) {
-                                // 3 seconds passed
-                                this.ejectTimerStart = null;
-                                this.showEjectToast = false;
-                                this.stopGame(this.currentGame.system);
-                            }
-                        } else {
-                            this.ejectTimerStart = null;
-                            this.showEjectToast = false;
-                        }
-                    },
-
-                    handleGamepadInput(gp) {
-                        const now = Date.now();
-                        if (now - this.lastGamepadInput < 180) return;
-
-                        const dpadUp = gp.buttons[12]?.pressed;
-                        const dpadDown = gp.buttons[13]?.pressed;
-                        const dpadLeft = gp.buttons[14]?.pressed;
-                        const dpadRight = gp.buttons[15]?.pressed;
-
-                        const stickX = gp.axes[0];
-                        const stickY = gp.axes[1];
-                        const deadzone = 0.5;
-
-                        if (dpadUp || stickY < -deadzone) {
-                            this.updateFocus('up');
-                            this.lastGamepadInput = now;
-                        } else if (dpadDown || stickY > deadzone) {
-                            this.updateFocus('down');
-                            this.lastGamepadInput = now;
-                        } else if (dpadLeft || stickX < -deadzone) {
-                            this.updateFocus('left');
-                            this.lastGamepadInput = now;
-                        } else if (dpadRight || stickX > deadzone) {
-                            this.updateFocus('right');
-                            this.lastGamepadInput = now;
-                        }
-
-                        if (gp.buttons[0].pressed) { // A
-                            this.clickFocusedElement();
-                            this.lastGamepadInput = now;
-                        } else if (gp.buttons[1].pressed) { // B
-                            this.goBack();
-                            this.lastGamepadInput = now;
-                        }
-                    },
-
-                    getFocusableElements() {
-                        // Use cached elements to prevent massive CPU spikes on every D-pad input
-                        if (this.cachedFocusElements && this.cachedFocusElements.length > 0) {
-                            return this.cachedFocusElements.filter(el => el.offsetParent !== null);
-                        }
-                        this.updateFocusCache();
-                        return this.cachedFocusElements.filter(el => el.offsetParent !== null);
-                    },
-
-                    updateFocusCache() {
-                        let elements = [];
-                        if (this.showShareModal) {
-                            elements = Array.from(document.querySelectorAll('.fixed[x-show="showShareModal"] .nav-item'));
-                        } else if (this.showImportModal) {
-                            elements = Array.from(document.querySelectorAll('.fixed[x-show="showImportModal"] .nav-item'));
-                        } else if (this.showSettingsModal) {
-                            elements = Array.from(document.querySelectorAll('.fixed[x-show="showSettingsModal"] .nav-item'));
-                        } else {
-                            elements = Array.from(document.querySelectorAll('.nav-item')).filter(el => {
-                                // Only main nav or main grid items when no modal is open
-                                return el.closest('nav') || el.closest('main');
-                            });
-                        }
-                        this.cachedFocusElements = elements;
-                        // Reset focus index if elements change significantly to avoid out of bounds
-                        if (this.focusIndex >= elements.length) {
-                            this.focusIndex = -1;
-                        }
-                    },
-
-                    updateFocus(dir) {
-                        const elements = this.getFocusableElements();
-                        if (elements.length === 0) return;
-
-                        if (this.focusIndex === -1) {
-                            this.focusIndex = 0;
-                        } else {
-                            if (dir === 'down' || dir === 'right') {
-                                this.focusIndex = (this.focusIndex + 1) % elements.length;
-                            } else {
-                                this.focusIndex = (this.focusIndex - 1 + elements.length) % elements.length;
-                            }
-                        }
-
-                        elements.forEach((el, idx) => {
-                            if (idx === this.focusIndex) {
-                                el.classList.add('gamepad-focus');
-                                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                                // Accessibility: focus the element
-                                if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'INPUT') {
-                                    el.focus({ preventScroll: true }); // Prevent jumping since we scrollIntoView smoothly
-                                }
-                            } else {
-                                el.classList.remove('gamepad-focus');
-                            }
-                        });
-                    },
-
-                    clickFocusedElement() {
-                        const elements = this.getFocusableElements();
-                        if (this.focusIndex >= 0 && elements[this.focusIndex]) {
-                            elements[this.focusIndex].click();
-                        }
-                    },
-
-                    goBack() {
-                        if (this.showShareModal) this.showShareModal = false;
-                        else if (this.showImportModal) this.resetImport();
-                        else if (this.showSettingsModal) this.showSettingsModal = false;
-                        else if (this.isPlaying) this.stopGame();
-                        else this.activePage = 'Home';
-                    },
-
-                    async loadFromQuery(cid) {
-                        this.isEmulatorLoading = true;
-                        try {
-                            // Check if game is already in library to avoid redundant fetching
-                            let game = this.library.find(g => g.cartucho === cid);
-
-                            if (!game) {
-                                const response = await fetch(`${this.ipfsGateway}${cid}`);
-                                if (!response.ok) throw new Error("Failed to fetch Cartucho JSON");
-                                const contentType = response.headers.get('content-type');
-
-                                if (contentType && contentType.includes('application/json')) {
-                                    const data = await response.json();
-                                    const validatedGame = this.validateCartuchoJSON(data, cid);
-                                    if (validatedGame) {
-                                        game = validatedGame;
-                                    } else {
-                                        return; // Validation failed (already alerted)
-                                    }
-                                } else {
-                                    alert("Invalid Cartucho format. Expected JSON.");
-                                    return;
-                                }
-
-                                // Add to library if it was successfully fetched and validated
-                                this.library.unshift(game);
-                                localStorage.setItem('cartucho_library', JSON.stringify(this.library));
-                            }
-                            this.loadGame(game);
-                        } catch (e) {
-                            console.error("Failed to load game from query param", e);
-                            alert("Failed to load Cartucho from URL parameter.");
-                        } finally {
-                            this.isEmulatorLoading = false;
-                        }
-                    },
-
-                    validateCartuchoJSON(data, cartuchoCid) {
-                        // Required fields: name, system, rom or rom_cid
-                        const romCid = data.rom_cid || data.rom;
-                        if (!data.name || !data.system || !romCid) {
-                            alert("Invalid Cartucho JSON: Missing required fields (name, system, rom_cid ou rom).");
-                            return null;
-                        }
-
-                        if (!SUPPORTED_CORES.includes(data.system)) {
-                            alert(`Invalid Cartucho JSON: System core '${data.system}' is not supported.`);
-                            return null;
-                        }
-
-                        // Normalize object for library
-                        return {
-                            cartucho: cartuchoCid, // The JSON CID is the Cartucho explicitly
-                            name: data.name,
-                            system: data.system,
-                            rom: romCid, // Store ROM CID here
-                            cover: data.media?.cover || data.cover || null,
-                            screenshot: data.media?.screenshot || data.screenshot || null,
-                            box3d: data.media?.box3d || data.box3d || null,
-                            description: data.description || '',
-                            maxPlayers: data.MaxPlayers || null,
-                            genres: data.Genres || null,
-                            version: data.version || '1.0',
-                            dateAdded: new Date().toISOString(),
-                            cheats: data.cheats || []
-                        };
-                    },
-
-                    get filteredLibrary() {
-                        let list = [...this.library];
-                        const activeSystem = this.menuItems.find(i => i.name === this.activePage)?.system;
-
-                        if (activeSystem && activeSystem !== 'all') {
-                            list = list.filter(game => game.system === activeSystem);
-                        }
-
-                        if (this.searchQuery) {
-                            list = list.filter(game =>
-                                game.name.toLowerCase().includes(this.searchQuery.toLowerCase())
-                            );
-                        }
-
-                        // Sort by lastPlayed (descending) then by dateAdded
-                        return list.sort((a, b) => {
-                            const timeA = new Date(a.lastPlayed || a.dateAdded).getTime();
-                            const timeB = new Date(b.lastPlayed || b.dateAdded).getTime();
-                            return timeB - timeA;
-                        });
-                    },
-
-                    get featuredGame() {
-                        const list = this.filteredLibrary;
-                        if (list.length === 0) return null;
-
-                        // Priority 1: Last played game in the current context
-                        const played = list.filter(g => g.lastPlayed)
-                            .sort((a, b) => new Date(b.lastPlayed) - new Date(a.lastPlayed));
-
-                        if (played.length > 0) return played[0];
-
-                        // Priority 2: Fallback to most recently added
-                        return list[0];
-                    },
-
-                    async loadGame(game) {
-                        // If a game is already playing or EmulatorJS is already loaded in the DOM,
-                        // the most stable way to load a NEW game is a full page reload with the new ?cartucho=CID
-                        // because WebAssembly modules and Emscripten states cannot be fully flushed reliably from memory.
-                        if (window.EJS_load && this.isPlaying && this.currentGame.cartucho !== game.cartucho) {
-                            window.location.href = `/?cartucho=${game.cartucho}`;
-                            return;
-                        }
-
-                        this.isPlaying = true;
-                        this.isEmulatorLoading = true;
-                        this.currentGame = game;
-
-                        // Update lastPlayed
-                        const index = this.library.findIndex(g => g.cartucho === game.cartucho);
-                        if (index !== -1) {
-                            this.library[index].lastPlayed = new Date().toISOString();
-                            localStorage.setItem('cartucho_library', JSON.stringify(this.library));
-                        }
-
-                        let gatewayUrl = `${this.ipfsGateway}${game.rom}`;
-
-                        // Smart Fetch: Check if the ROM is reachable, if not, try fallbacks
-                        this.isEmulatorLoading = true;
-                        try {
-                            const fastGateway = await this.smartFetchROM(game.rom);
-                            if (fastGateway) {
-                                gatewayUrl = `${fastGateway}${game.rom}`;
-                                this.activeGatewayName = new URL(fastGateway).hostname.toUpperCase();
-                                console.log("Using optimized gateway:", fastGateway);
-                            }
-                        } catch (e) {
-                            console.warn("Smart fetch failed, falling back to default", e);
-                        }
-
-                        // Change URL to reflect current game ?cartucho=CID
-                        const url = new URL(window.location);
-                        url.searchParams.set('cartucho', game.cartucho);
-                        window.history.replaceState({}, '', url);
-
-                        // Configure EmulatorJS
-                        window.EJS_player = '#game-container';
-                        window.EJS_gameUrl = gatewayUrl;
-                        window.EJS_gameID = game.cartucho;
-                        window.EJS_gameName = game.name;
-                        window.EJS_backgroundImage = this.getMediaUrl(game.cover);
-                        window.EJS_core = game.system || 'nes';
-
-                        // Handle language fallback (e.g. pt-BR -> pt -> en-US)
-                        const rawLang = navigator.language || 'en-US';
-                        const shortLang = rawLang.split('-')[0];
-                        const supportedCDN = ['en', 'pt', 'es', 'fr', 'de', 'it', 'zh', 'ja', 'ko'];
-
-                        window.EJS_language = supportedCDN.includes(rawLang) ? rawLang :
-                            (supportedCDN.includes(shortLang) ? shortLang : 'en');
-
-                        window.EJS_disableAutoLang = true;
-                        window.EJS_cheats = game.cheats || [];
-                        window.EJS_startOnLoaded = true;
-
-                        // Save Configuration
-                        window.EJS_saveStateLocation = 'browser';
-                        window.EJS_defaultOptions = {
-                            "save-state-location": "browser",
-                            "save-state-slot": 1
-                        };
-
-                        // Give DOM time to update before loading
-                        setTimeout(() => {
-                            if (window.EJS_load) {
-                                // If it already exists but we are NOT switching games (or it's the first click)
-                                try {
-                                    window.EJS_load();
-                                } catch (e) {
-                                    console.error("EJS_load error", e);
-                                    window.location.href = `/?cartucho=${game.cartucho}`;
-                                }
-                                this.isEmulatorLoading = false;
-                            } else {
-                                if (!document.getElementById('ejs-loader')) {
-                                    const script = document.createElement('script');
-                                    script.id = 'ejs-loader';
-                                    script.src = 'https://cdn.emulatorjs.org/latest/data/loader.js';
-                                    script.async = true;
-                                    script.onload = () => {
-                                        if (window.EJS_load) {
-                                            window.EJS_load();
-                                            this.isEmulatorLoading = false;
-                                        }
-                                    };
-                                    document.body.appendChild(script);
-                                } else {
-                                    // Script exists but EJS_load is not yet available, poll briefly
-                                    let attempts = 0;
-                                    const poll = setInterval(() => {
-                                        attempts++;
-                                        if (window.EJS_load) {
-                                            window.EJS_load();
-                                            this.isEmulatorLoading = false;
-                                            clearInterval(poll);
-                                        } else if (attempts > 20) {
-                                            clearInterval(poll);
-                                            this.isEmulatorLoading = false;
-                                        }
-                                    }, 100);
-                                }
-                            }
-                        }, 50);
-                    },
-
-                    stopGame(targetPage = 'Home') {
-                        // The cleanest way to stop WebAssembly emulators and free memory
-                        // is to reload the window. We pass the desired page to persist state.
-                        const url = new URL(window.location.origin + window.location.pathname);
-                        if (targetPage !== 'Home') {
-                            url.searchParams.set('page', targetPage);
-                        }
-                        window.location.href = url.toString();
-                    },
-
-                    async startScanner() {
-                        this.importMode = 'scan';
-                        this.$nextTick(() => {
-                            if (!this.html5QrCode) {
-                                this.html5QrCode = new Html5Qrcode("reader");
-                            }
-                            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-                            this.html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
-                                this.onScanSuccess(decodedText);
-                            }).catch(err => {
-                                console.error("Scanner start error", err);
-                                alert("Erro ao acessar a câmera. Verifique as permissões.");
-                                this.importMode = 'manual';
-                            });
-                        });
-                    },
-
-                    async stopScanner() {
-                        if (this.html5QrCode && this.html5QrCode.isScanning) {
-                            await this.html5QrCode.stop();
-                        }
-                    },
-
-                    resetImport() {
-                        this.stopScanner();
-                        this.newCID = '';
-                        this.previewGame = null;
-                        this.scanPending = false;
-                        this.showImportModal = false;
-                    },
-
-                    saveGateway() {
-                        if (!this.ipfsGateway.endsWith('/')) this.ipfsGateway += '/';
-                        localStorage.setItem('cartucho_gateway', this.ipfsGateway);
-                        this.copyFeedback = true; // Use toast for feedback
-                        setTimeout(() => this.copyFeedback = false, 2000);
-                    },
-
-                    onScanSuccess(text) {
-                        const cid = this.extractCID(text);
-                        if (cid) {
-                            this.stopScanner();
-                            this.newCID = cid;
-                            this.fetchPreview(cid);
-                        }
-                    },
-
-                    onManualInput() {
-                        const cid = this.extractCID(this.newCID);
-                        if (cid) {
-                            this.newCID = cid;
-                            this.fetchPreview(cid);
-                        }
-                    },
-
-                    extractCID(text) {
-                        // 1. Prioritize manual search for ?cartucho= parameter (works for malformed local URLs)
-                        if (text.includes('cartucho=')) {
-                            const match = text.match(/[?&]cartucho=([^&?#\s"']+)/);
-                            if (match && match[1]) return this.sanitizeCID(match[1]);
-                        }
-
-                        // 2. Try to parse as URL for other parameters (future-proofing)
-                        try {
-                            const url = new URL(text);
-                            const params = new URLSearchParams(url.search);
-                            const cartucho = params.get('cartucho');
-                            if (cartucho) return this.sanitizeCID(cartucho);
-                        } catch (e) {
-                            // Silently continue to regex
-                        }
-
-                        return this.sanitizeCID(text);
-                    },
-
-                    sanitizeCID(text) {
-                        if (!text) return null;
-                        // 3. Strict Regex for CID v0 or v1
-                        // Qm... (v0) or b.../B.../z.../F... (v1 base32/base58/base64)
-                        const cidRegex = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/;
-
-                        // Extract just the CID part if it was mixed with other string junk, but enforce validation
-                        const looseMatch = text.match(/(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})/);
-
-                        if (looseMatch && cidRegex.test(looseMatch[0])) {
-                            return looseMatch[0];
-                        }
-                        return null;
-                    },
-
-                    async fetchPreview(input) {
-                        const cid = this.extractCID(input);
-                        if (!cid) {
-                            // Invalid CID format, abort early
-                            return;
-                        }
-
-                        this.scanPending = true;
-                        this.previewGame = null;
-
-                        try {
-                            const response = await fetch(`${this.ipfsGateway}${cid}`);
-                            if (!response.ok) throw new Error("Not found");
-                            const contentType = response.headers.get('content-type');
-
-                            if (contentType && contentType.includes('application/json')) {
-                                const data = await response.json();
-                                // Basic validation for preview
-                                if (data.name && data.system && (data.rom || data.rom_cid)) {
-                                    this.previewGame = {
-                                        cartucho: cid,
-                                        name: data.name,
-                                        system: data.system,
-                                        cover: data.media?.cover || data.cover || null,
-                                        description: data.description || ''
-                                    };
-                                }
-                            }
-                        } catch (e) {
-                            console.error("Preview fetch failed", e);
-                        } finally {
-                            this.scanPending = false;
-                        }
-                    },
-
-                    async importCartucho() {
-                        const rawCid = this.newCID.trim();
-                        const cid = this.extractCID(rawCid);
-
-                        if (!cid) {
-                            alert("Cópia de segurança inválida. O formato do CID está incorreto.");
-                            return;
-                        }
-
-                        // Check if game already exists in library
-                        const existingGame = this.library.find(g => (g.cartucho || g.cid) === cid);
-                        if (existingGame) {
-                            this.loadGame(existingGame);
-                            this.resetImport();
-                            return;
-                        }
-
-                        this.isEmulatorLoading = true;
-                        try {
-                            // If we already have a preview, we can use it (or fetch it if not exists)
-                            let gameData;
-                            if (this.previewGame && this.previewGame.cid === cid) {
-                                // Optimization: we already fetched it for preview
-                                const response = await fetch(`${this.ipfsGateway}${cid}`);
-                                gameData = await response.json();
-                            } else {
-                                const response = await fetch(`${this.ipfsGateway}${cid}`);
-                                if (!response.ok) throw new Error("Failed to fetch");
-                                gameData = await response.json();
-                            }
-
-                            const validatedGame = this.validateCartuchoJSON(gameData, cid);
-                            if (validatedGame) {
-                                // Add to library if not exists
-                                if (!this.library.find(g => g.cartucho === cid)) {
-                                    this.library.unshift(validatedGame);
-                                    localStorage.setItem('cartucho_library', JSON.stringify(this.library));
-
-                                    // Success feedback
-                                    this.copyFeedback = true; // Reusing this for general "Success" toast
-                                    setTimeout(() => this.copyFeedback = false, 3000);
-                                }
-
-                                this.loadGame(validatedGame);
-                                this.resetImport();
-                            }
-                        } catch (e) {
-                            console.error("Import failed", e);
-                            alert("Falha ao importar cartucho. Verifique o CID.");
-                        } finally {
-                            this.isEmulatorLoading = false;
-                        }
-                    },
-
-                    deleteGame(cartucho) {
-                        this.library = this.library.filter(g => g.cartucho !== cartucho);
-                        localStorage.setItem('cartucho_library', JSON.stringify(this.library));
-                    },
-
-                    exportLibrary() {
-                        const data = JSON.stringify(this.library, null, 2);
-                        const blob = new Blob([data], { type: 'application/json' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `cartucho-library-${new Date().toISOString().split('T')[0]}.json`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                    },
-
-                    importLibrary(event) {
-                        const file = event.target.files[0];
-                        if (!file) return;
-
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            try {
-                                const imported = JSON.parse(e.target.result);
-                                if (Array.isArray(imported)) {
-                                    // Merge without duplicates based on cartucho field
-                                    const currentCids = new Set(this.library.map(g => g.cartucho).filter(Boolean));
-                                    const newGames = imported.filter(g => {
-                                        const newCid = g.cartucho || g.cid; // Support legacy 'cid' in import for backward compatibility
-                                        return newCid && !currentCids.has(newCid);
-                                    });
-                                    this.library = [...newGames, ...this.library];
-                                    localStorage.setItem('cartucho_library', JSON.stringify(this.library));
-                                    alert(`Imported ${newGames.length} new games!`);
-                                    this.showSettingsModal = false;
-                                }
-                            } catch (err) {
-                                alert("Invalid JSON file");
-                            }
-                        };
-                        reader.readAsText(file);
-                    },
-
-                    async shareCartucho(game) {
-                        this.shareGame = game;
-                        this.showShareModal = true;
-
-                        // Wait for modal to render before generating QR
-                        this.$nextTick(() => {
-                            this.generateQRCode();
-                        });
-                    },
-
-                    generateQRCode() {
-                        const container = document.getElementById('qrcode-container');
-                        if (!container) return;
-
-                        // Clear previous QR code
-                        container.innerHTML = '';
-
-                        new QRCode(container, {
-                            text: this.shareLink,
-                            width: 200,
-                            height: 200,
-                            colorDark: "#4f46e5",
-                            colorLight: "transparent",
-                            correctLevel: QRCode.CorrectLevel.H
-                        });
-                    },
-
-                    async copyShareLink() {
-                        try {
-                            await navigator.clipboard.writeText(this.shareLink);
-                            this.copyFeedback = true;
-                            setTimeout(() => {
-                                this.copyFeedback = false;
-                            }, 3000);
-                        } catch (err) {
-                            console.error('Failed to copy', err);
-                        }
-                    },
-
-                    updateGamepadToast() {
-                        this.showGamepadToast = true;
-                        if (this.gamepadToastTimer) clearTimeout(this.gamepadToastTimer);
-                        this.gamepadToastTimer = setTimeout(() => {
-                            this.showGamepadToast = false;
-                        }, 4000);
-                    },
-
-                    async smartFetchROM(cid) {
-                        const isHttps = window.location.protocol === 'https:';
-
-                        // Filter out HTTP gateways if on HTTPS to avoid Mixed Content (ERR_BLOCKED_BY_CLIENT)
-                        const testGateways = this.knownGateways.filter(g => {
-                            if (isHttps && g.startsWith('http:')) return false;
-                            return true;
-                        });
-
-                        const controllers = [];
-                        const fetchWithTimeout = async (baseUrl) => {
-                            const controller = new AbortController();
-                            controllers.push(controller);
-                            const timeoutId = setTimeout(() => controller.abort(), 4000);
-                            try {
-                                const resp = await fetch(`${baseUrl}${cid}`, { method: 'HEAD', signal: controller.signal });
-                                clearTimeout(timeoutId);
-                                if (resp.ok) return baseUrl;
-                                throw new Error("Gateway failed");
-                            } catch (e) {
-                                throw e;
-                            }
-                        };
-
-                        try {
-                            // Try the fastest responders
-                            const winner = await Promise.any(testGateways.map(g => fetchWithTimeout(g)));
-                            // Cleanup other pending requests
-                            controllers.forEach(c => c.abort());
-                            return winner;
-                        } catch (e) {
-                            console.warn("All smart gateways failed or blocked. Using default storage.", e);
-                            const fallback = isHttps ? 'https://ipfs.io/ipfs/' : 'http://127.0.0.1:8080/ipfs/';
-                            this.activeGatewayName = isHttps ? 'IPFS_IO (FALLBACK)' : 'LOCAL_KUBO';
-                            return fallback;
-                        }
-                    },
-
-                    async testGateways() {
-                        this.gatewayStatus = {};
-                        for (const g of this.knownGateways) {
-                            const start = Date.now();
-                            try {
-                                const controller = new AbortController();
-                                const timeoutId = setTimeout(() => controller.abort(), 3000);
-                                await fetch(`${g}QmUNLLsP2SNsqp9XiX2C9S4Gshm24523G97unG58D8KqzM`, { method: 'HEAD', signal: controller.signal });
-                                clearTimeout(timeoutId);
-                                this.gatewayStatus[g] = `${Date.now() - start}ms`;
-                            } catch (e) {
-                                this.gatewayStatus[g] = 'Timeout/Error';
-                            }
-                        }
-                    }
-                }
-            }
-        </script>
+    </div><!-- /flex-1 flex min-h-0 relative -->
 </body>
 
 </html>
