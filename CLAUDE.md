@@ -101,6 +101,13 @@ para ler o identificador.
 Grave **sempre** por ali: é o único ponto que avisa o usuário quando o navegador recusa a
 escrita (janela privada do Safari e quota cheia lançam em `setItem`, e antes a alteração se
 perdia calada) e que pede `navigator.storage.persist()` assim que existe acervo a proteger.
+As demais preferências (gateway, cache, netplay) passam por `confirmarGravacao()`, pelo mesmo
+motivo: sem ele o toast anunciava "Using filebase.io" com a escrita recusada. A exceção
+deliberada é `rememberGateway`, que roda a cada download sem o usuário pedir nada.
+
+`loadLibrary()` **descarta entrada inservível** (sem CID, sem nome, sem ROM ou com core não
+suportado). Não é preciosismo: sem nome, `filteredLibrary` chamava `game.name.toLowerCase()`
+e a grade inteira sumia da tela ao digitar qualquer coisa na busca.
 
 ### Gateways são a parte frágil do sistema
 `KNOWN_GATEWAYS` é a lista **fixa**, curada empiricamente a partir da lista oficial do IPFS
@@ -117,6 +124,15 @@ A lista é curada porque: a maioria dos gateways públicos famosos
 trustless-gateway, storry.tv) responde 403/redirect **sem cabeçalho CORS**, ou tem DNS morto — o
 `fetch` do browser falha neles mesmo quando o conteúdo existe. Antes de adicionar um gateway, teste
 com `fetch` cross-origin real a partir de uma página, não abrindo a URL no navegador.
+
+O download da ROM tem **dois prazos**, e eles não são intercambiáveis: até os cabeçalhos
+vale `ROM_FIRST_BYTE_TIMEOUT` (60s, largo — busca fria no IPFS precisa achar os provedores
+na rede, e 35s até o primeiro byte já foi medido aqui), e entre pedaços do corpo vale
+`ROM_STALL_TIMEOUT` (20s, curto — aí o conteúdo já está vindo e parar é defeito). Nenhum
+limita o tempo total, que num arquivo grande é legitimamente longo. Sem isso, gateway que
+começa a enviar e emudece deixava `reader.read()` pendurado e a tela de boot presa em
+DOWNLOADING_ROM para sempre; agora estoura o prazo, o app entrega a URL crua do gateway e o
+EmulatorJS baixa por conta própria (perde a barra de progresso e o cache, mas o jogo abre).
 
 Antes de ir à rede, `loadGame` consulta o cache local de ROMs (`rom-cache.js`, Cache API,
 chaveado por CID). Como CID é hash do conteúdo, o cache é permanente e não precisa de
@@ -177,6 +193,11 @@ valores válidos `download` e `browser`): guardado no navegador, ele some junto 
 do site sem o usuário nunca saber que tinha algo a perder. `EJS_saveStateLocation`, que
 existia neste código, **não é uma opção da API** — não volte a usá-la.
 
+Falha ao carregar o loader **precisa remover o `<script>` do DOM** (`script.remove()` no `onerror`):
+`bootEmulator` trata "script presente" como "o loader cuida do boot" e resolve sem fazer nada, então
+sem isso o botão Try_Again limpava a mensagem de erro e deixava o usuário num player vazio, sem erro
+e sem saída.
+
 Duas armadilhas já pagas:
 - As versões atuais do loader **bootam sozinhas e nunca expõem `EJS_load`**. Ausência de `EJS_load`
   não é erro. `isEmulatorLoaded()` checa o `<script id="ejs-loader">`, não a global.
@@ -196,7 +217,21 @@ só vigia o eject (Start + Cima por 3s). Os alvos são elementos com a classe `.
 modal aberto. A lista fica cacheada por custo de CPU e é invalidada pelos `$watch` de
 `registerFocusWatchers()`. **Ao adicionar um modal novo:** registre-o no array de
 `registerFocusWatchers()` (app.js), na cadeia de `updateFocusCache()` e em `goBack()` (gamepad.js) —
-senão o controle continua navegando pelos elementos atrás do modal.
+senão o controle continua navegando pelos elementos atrás do modal. Isso vale também para as
+confirmações (`pendingDelete`, `pendingCacheLimit`): elas ficam no topo do body, fora de `<nav>` e
+`<main>`, então o ramo "sem modal" as filtrava para fora e o A abria um jogo com a pergunta
+"remover?" ainda na tela.
+
+O foco move por **geometria**, não pela ordem do DOM (`vizinhoNaDirecao`), senão descer uma linha
+numa grade de seis colunas custa seis toques. E quando o Alpine recria os elementos focados — trocar
+ABC/abc muda o `:key` das 26 teclas —, refazer o cache não basta: é preciso `refocarAtual()`, ou o
+anel some até a próxima direção apertada.
+
+**Teclado na tela e `@click.away` não se dão bem.** O teclado é irmão dos modais no fim do body
+(precisa ser: serve à busca e aos campos das configurações), então cada tecla apertada conta como
+clique fora e fechava o modal de import na primeira letra. O `click.away` do modal checa
+`tecladoAberto` por isso, e `resetImport()` fecha o teclado junto — senão ele fica flutuando sobre a
+biblioteca, prendendo o foco e escrevendo num campo que já saiu da tela.
 
 ## Design
 

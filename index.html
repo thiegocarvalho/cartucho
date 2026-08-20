@@ -34,9 +34,11 @@
     <meta name="twitter:description" content="Decentralized retro emulator, straight from IPFS.">
     <meta name="twitter:image" content="https://thiegocarvalho.github.io/cartucho/assets/img/og-cover.png">
 
-    <!-- Favicon: pixel transparente, só para não dar 404 -->
-    <link rel="icon"
-        href="data:image/x-icon;base64,AAABAAEAAQEAAAEAIAAwAAAAFgAAACgAAAABAAAAAgAAAAEAIAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAA">
+    <!-- Favicons -->
+    <link rel="icon" href="favicon.ico" sizes="32x32">
+    <link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
 
     <!-- Handshake antecipado com os gateways da corrida (KNOWN_GATEWAYS em config.js).
          Mantenha em sincronia com aquela lista. -->
@@ -48,7 +50,7 @@
     <!-- CSS do Tailwind pré-compilado (só as classes usadas). Substitui o Play CDN, que
          eram 440 KB de JS compilando CSS no browser a cada carga.
          Regenerar após mexer em classes:  npm run css   (ver README) -->
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=24ac715e">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=ed268555">
 
     <!-- Fontes: só os pesos usados (Inter 400/700, Orbitron 700/900, Silkscreen 400/700).
          Carregadas sem bloquear o render — display=swap mostra o texto na fonte de sistema
@@ -71,21 +73,21 @@
         <script type="importmap">
             {
                 "imports": {
-                        "./assets/js/app.js": "./assets/js/app.js?v=24ac715e",
-                        "./assets/js/config.js": "./assets/js/config.js?v=24ac715e",
-                        "./assets/js/emulator.js": "./assets/js/emulator.js?v=24ac715e",
-                        "./assets/js/gamepad.js": "./assets/js/gamepad.js?v=24ac715e",
-                        "./assets/js/icons.js": "./assets/js/icons.js?v=24ac715e",
-                        "./assets/js/ipfs.js": "./assets/js/ipfs.js?v=24ac715e",
-                        "./assets/js/library.js": "./assets/js/library.js?v=24ac715e",
-                        "./assets/js/page-meta.js": "./assets/js/page-meta.js?v=24ac715e",
-                        "./assets/js/rom-cache.js": "./assets/js/rom-cache.js?v=24ac715e",
-                        "./assets/js/vendor.js": "./assets/js/vendor.js?v=24ac715e"
+                        "./assets/js/app.js": "./assets/js/app.js?v=ed268555",
+                        "./assets/js/config.js": "./assets/js/config.js?v=ed268555",
+                        "./assets/js/emulator.js": "./assets/js/emulator.js?v=ed268555",
+                        "./assets/js/gamepad.js": "./assets/js/gamepad.js?v=ed268555",
+                        "./assets/js/icons.js": "./assets/js/icons.js?v=ed268555",
+                        "./assets/js/ipfs.js": "./assets/js/ipfs.js?v=ed268555",
+                        "./assets/js/library.js": "./assets/js/library.js?v=ed268555",
+                        "./assets/js/page-meta.js": "./assets/js/page-meta.js?v=ed268555",
+                        "./assets/js/rom-cache.js": "./assets/js/rom-cache.js?v=ed268555",
+                        "./assets/js/vendor.js": "./assets/js/vendor.js?v=ed268555"
                 }
         }
         </script>
         <!-- /importmap -->
-    <script type="module" src="assets/js/app.js?v=24ac715e"></script>
+    <script type="module" src="assets/js/app.js?v=ed268555"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 
@@ -156,7 +158,7 @@
                 </button>
                 <button @click="confirmarLimiteDeCache()"
                     class="nav-item flex-1 min-h-[44px] px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-[12px] font-retro uppercase tracking-[0.2em] transition-all active:scale-95">
-                    Liberar
+                    Free space
                 </button>
             </div>
         </div>
@@ -556,10 +558,13 @@
                             <!-- Risco de perder o acervo: o aviso de persistência existia só no
                                  bloco de cache e falava das ROMs. Quem tem cartuchos guardados e
                                  nenhum backup é quem mais precisa saber disso. -->
-                            <p x-show="library.length > 0 && cachePersistente"
+                            <p x-show="library.length > 0 && cachePersistente === true"
                                 class="text-[13px] text-emerald-400/90 leading-relaxed mb-4">
                                 Collection protected: this browser will not wipe it on its own.</p>
-                            <p x-show="library.length > 0 && !cachePersistente"
+                            <!-- `=== false`, não `!cachePersistente`: enquanto a resposta do
+                                 navegador não chega o valor é null, e o aviso mais assustador do
+                                 app piscava para quem já tem armazenamento persistente. -->
+                            <p x-show="library.length > 0 && cachePersistente === false"
                                 class="text-[13px] text-amber-300/90 leading-relaxed mb-4">
                                 The browser may wipe this collection when space runs short. Export a backup so it is not the only copy.</p>
 
@@ -810,7 +815,7 @@
                                     x-text="emulatorError"></p>
                                 <div class="flex items-center space-x-3 mt-8">
                                     <button @click="emulatorError = ''; loadGame(currentGame)"
-                                        class="nav-item bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-[12px] font-retro tracking-widest uppercase transition-all active:scale-95">Tentar_De_Novo</button>
+                                        class="nav-item bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-[12px] font-retro tracking-widest uppercase transition-all active:scale-95">Try_Again</button>
                                     <button @click="stopGame()"
                                         class="nav-item bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white px-5 py-2.5 rounded-xl text-[12px] font-retro tracking-widest uppercase border border-white/5 transition-all active:scale-95">Back</button>
                                 </div>
@@ -872,7 +877,11 @@
             class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
             <!-- max-h + rolagem interna: em tela baixa (celular deitado, ou com o teclado
                  virtual aberto) o modal passava da viewport e os botões ficavam inalcançáveis -->
-            <div @click.away="resetImport()"
+            <!-- `click.away` ignora o teclado da tela: ele é irmão deste painel no fim do
+                 body (precisa ser, porque serve a busca e aos campos das configurações
+                 também), então cada tecla apertada contava como clique fora e fechava o
+                 modal na primeira letra — o teclado era inútil justamente aqui. -->
+            <div @click.away="if (!tecladoAberto) resetImport()"
                 class="glass-panel w-full max-w-lg rounded-3xl shadow-2xl border-indigo-500/20 relative max-h-[92vh] overflow-y-auto">
 
                 <!-- Cabeçalho fixo: com o modal rolando, um X posicionado sobre o conteúdo
@@ -974,7 +983,7 @@
                         <!-- O campo aceitava qualquer texto e o erro só aparecia depois do clique. -->
                         <p x-show="cidStatus === 'invalido'" class="text-[13px] text-red-400 px-1 leading-relaxed">
                             That does not look like a CID or a cartridge link — a CID starts with
-                            <span class="font-mono">Qm</span> ou <span class="font-mono">bafy</span>.
+                            <span class="font-mono">Qm</span> or <span class="font-mono">bafy</span>.
                         </p>
                         <p x-show="cidStatus !== 'invalido'" class="text-[13px] text-slate-500 px-1 leading-relaxed">
                             The bare CID or the shared link both work: the link becomes a CID on its own.
@@ -1059,9 +1068,9 @@
                         class="sticky bottom-0 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 px-6 sm:px-8 pt-3 pb-6 sm:pb-8 [@media(max-height:700px)]:-mx-4 [@media(max-height:700px)]:-mb-4 [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:pb-4 [@media(max-height:700px)]:pt-2 bg-cartucho-sidebar/95 backdrop-blur-md border-t border-white/5 flex flex-col-reverse sm:flex-row sm:items-center gap-3 sm:gap-4">
                         <button @click="resetImport()"
                             class="nav-item w-full sm:flex-1 min-h-[44px] px-4 py-4 [@media(max-height:700px)]:py-2 rounded-2xl text-slate-500 font-bold hover:bg-white/5 transition-all text-xs uppercase tracking-widest font-retro">Cancel</button>
-                        <!-- Save sem jogar: útil para montar a biblioteca de uma vez. Off
-                             quando o cartucho já está no acervo, em vez de aceitar o clique e só
-                             então avisar que era duplicata. -->
+                        <!-- Guardar sem jogar: útil para montar a biblioteca de uma vez.
+                             Desligado quando o cartucho já está no acervo, em vez de aceitar o
+                             clique e só então avisar que era duplicata. -->
                         <button @click="importCartucho({ play: false })"
                             :disabled="!cidAtual || !!importando || !!jogoJaNaBiblioteca"
                             :class="(!cidAtual || importando || jogoJaNaBiblioteca) ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:bg-white/10 active:scale-95'"

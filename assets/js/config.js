@@ -80,6 +80,21 @@ export const CACHE_MAX_FALLBACK = 1024 * MB;
 /** Desligado por padrão: guardar megabytes no aparelho de alguém se pede, não se assume. */
 export const CACHE_LIMITE_PADRAO = 0;
 
+/**
+ * Espera pelo primeiro byte da ROM (ms), generosa de propósito: quando o gateway ainda
+ * não tem o conteúdo, ele precisa achar os provedores na rede antes de responder, e uma
+ * busca fria passando de 30s é normal no IPFS. Medido aqui: 35s até os cabeçalhos num
+ * gateway sob limite de uso. Prazo curto nesta fase é falso positivo, não proteção.
+ */
+export const ROM_FIRST_BYTE_TIMEOUT = 60000;
+/**
+ * Silêncio tolerado ENTRE pedaços já no meio do corpo (ms). Não é o tempo total: um
+ * arquivo de 40 MB numa linha ruim leva minutos legitimamente. Aqui o gateway já provou
+ * que tem o conteúdo e está enviando; parar no meio é defeito, e sem prazo o
+ * `reader.read()` nunca resolve e a tela de boot fica presa em DOWNLOADING_ROM.
+ */
+export const ROM_STALL_TIMEOUT = 20000;
+
 /** Timeout de cada HEAD na corrida de gateways (ms). */
 export const GATEWAY_RACE_TIMEOUT = 6000;
 /**

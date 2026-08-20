@@ -134,15 +134,21 @@ export async function fetchCartucho(gateway, cid) {
  * @returns {Promise<{data: object, gateway: string}|{error: 'unreachable'|'not-json'}>}
  */
 export async function fetchCartuchoAnywhere(preferred, gateways, cid) {
-    const first = await fetchCartucho(preferred, cid);
+    // O preferido passa pelo mesmo filtro dos outros: gateway http: escolhido por quem roda
+    // um nó local é bloqueado por mixed content na página https, e tentá-lo assim mesmo só
+    // rendia um erro no console a cada busca de manifesto.
+    const [usavel] = usableGateways([preferred].filter(Boolean));
+    const first = usavel
+        ? await fetchCartucho(usavel, cid)
+        : { error: 'unreachable' };
     // 'not-json' significa que o CID foi encontrado e não é um Cartucho: nem tenta os outros.
-    if (!first.error) return { ...first, gateway: preferred };
+    if (!first.error) return { ...first, gateway: usavel };
     if (first.error === 'not-json') return first;
 
-    const others = usableGateways(gateways).filter(g => g !== preferred);
+    const others = usableGateways(gateways).filter(g => g !== usavel);
     if (others.length === 0) return first;
 
-    console.warn(`Gateway ${preferred} não respondeu; tentando os demais.`);
+    console.warn(`Gateway ${usavel || preferred} indisponível; tentando os demais.`);
     try {
         return await Promise.any(others.map(async (gateway) => {
             const result = await fetchCartucho(gateway, cid);

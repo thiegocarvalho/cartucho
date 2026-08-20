@@ -144,7 +144,14 @@ export function bootEmulator() {
             if (typeof window.EJS_load === 'function') window.EJS_load();
             resolve();
         };
-        script.onerror = () => reject(new Error('falha ao carregar o loader do EmulatorJS'));
+        script.onerror = () => {
+            // Tirar a tag do DOM é o que torna a retentativa possível: o `if` acima
+            // considera "script presente" como "o loader cuida do boot" e resolve sem
+            // fazer nada. Com a tag morta ali, o botão Try_Again limpava a mensagem de
+            // erro e deixava o usuário num player vazio, sem erro e sem saída.
+            script.remove();
+            reject(new Error('falha ao carregar o loader do EmulatorJS'));
+        };
         document.body.appendChild(script);
     });
 }

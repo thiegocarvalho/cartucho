@@ -69,7 +69,12 @@ export function cartuchoApp() {
         cacheLimitBytes: 0,
         /** Teto do controle: o que este navegador concede, com folga. */
         cacheMaxBytes: CACHE_MAX_FALLBACK,
-        cachePersistente: false,
+        /**
+         * null enquanto o navegador não respondeu. Booleano cru fazia a tela de
+         * configurações piscar o aviso "o navegador pode limpar" para quem já tem
+         * armazenamento persistente, porque `activePage` muda na hora e a resposta é async.
+         */
+        cachePersistente: null,
         /** Mudança de limite esperando confirmação, quando ela apaga o que está guardado. */
         pendingCacheLimit: null,
         searchQuery: '',
@@ -179,8 +184,15 @@ export function cartuchoApp() {
             // de import troca os botões da tela — sem invalidar, o controle continua
             // navegando por botões que não existem mais.
             ['showImportModal', 'showShareModal', 'importStatus', 'importMode', 'cameraStatus',
-                'tecladoAberto', 'tecladoMaiusculas',
+                'tecladoAberto', 'pendingDelete', 'pendingCacheLimit',
                 'activePage', 'library', 'searchQuery'].forEach(prop => this.$watch(prop, invalidate));
+
+            // Trocar maiúsculas recria as teclas: além de refazer o cache, é preciso
+            // repintar o anel de foco, senão ele some até a próxima direção apertada.
+            this.$watch('tecladoMaiusculas', () => this.$nextTick(() => {
+                this.updateFocusCache();
+                this.refocarAtual();
+            }));
         },
 
         // ------------------------------------------------------------ derivados
@@ -295,17 +307,21 @@ export function cartuchoApp() {
                 this.salvarAcervo();
             }
 
-            const romUrl = await this.resolveRomUrl(game);
-
-            syncUrlToGame(cid);
-            aplicarMetaDoJogo(game, this.getMediaUrl(game.cover || game.screenshot));
-            configureEmulator(game, romUrl, this.getMediaUrl(game.cover), {
-                netplayServer: this.netplayServer
-            });
-
-            // Deixa o Alpine pintar o #game-container antes do emulador procurar por ele.
-            await this.$nextTick();
+            // A resolução da ROM entra no try junto do boot: ela vem ANTES da tela de
+            // boot existir na cabeça de quem lê, mas `isPlaying` já é true aqui, então o
+            // overlay está visível — uma exceção fora do try o deixaria na tela para
+            // sempre, sem mensagem e sem saída.
             try {
+                const romUrl = await this.resolveRomUrl(game);
+
+                syncUrlToGame(cid);
+                aplicarMetaDoJogo(game, this.getMediaUrl(game.cover || game.screenshot));
+                configureEmulator(game, romUrl, this.getMediaUrl(game.cover), {
+                    netplayServer: this.netplayServer
+                });
+
+                // Deixa o Alpine pintar o #game-container antes do emulador procurar por ele.
+                await this.$nextTick();
                 await bootEmulator();
                 this.emulatorError = '';
             } catch (e) {
@@ -366,6 +382,9 @@ export function cartuchoApp() {
 
         rememberGateway(gateway) {
             this.lastWorkingGateway = gateway;
+            // Sem `confirmarGravacao` de propósito: isto roda a cada download, sem o
+            // usuário ter pedido nada, e é só um palpite para a próxima corrida. Falhar
+            // aqui não muda nada que ele veja — avisar seria ruído.
             saveLastWorkingGateway(gateway);
         },
 
@@ -373,7 +392,7 @@ export function cartuchoApp() {
 
         /** Rótulo do valor atual. */
         get cacheLimiteRotulo() {
-            return this.cacheLimitBytes > 0 ? formatBytes(this.cacheLimitBytes) : 'Desligado';
+            return this.cacheLimitBytes > 0 ? formatBytes(this.cacheLimitBytes) : 'Off';
         },
 
         async refreshCacheStats() {
@@ -418,7 +437,9 @@ export function cartuchoApp() {
         async aplicarLimiteDeCache(bytes) {
             const limite = Math.max(0, Math.min(Number(bytes) || 0, this.cacheMaxBytes));
             this.cacheLimitBytes = limite;
-            saveCacheLimit(limite);
+            // Sem gravar, o limite volta ao valor antigo no reload e o cache passa a
+            // guardar (ou descartar) por um teto diferente do que a tela mostra.
+            if (!this.confirmarGravacao(saveCacheLimit(limite))) return;
 
             // Ligar o cache é o momento de pedir armazenamento persistente: sem isso o
             // navegador pode limpar tudo sozinho quando o disco aperta.
@@ -522,6 +543,10 @@ export function cartuchoApp() {
 
         async startScanner() {
             this.importMode = 'scan';
+            // Já rodando: clicar de novo na aba Camera chamaria `start()` com o leitor em
+            // SCANNING, que lança de forma síncrona — fora do `.catch()` encadeado — e
+            // deixaria o overlay preso em "Opening_Camera" sobre uma câmera viva.
+            if (this.cameraStatus === 'ativa' || this.cameraStatus === 'carregando') return;
             this.scanStatus = '';
             this.cameraErro = '';
             this.cameraStatus = 'carregando';
@@ -585,11 +610,19 @@ export function cartuchoApp() {
             this.importando = '';
             this.cameraErro = '';
             this.scanStatus = '';
+            // Sem fechar o teclado, ele fica flutuando sobre a biblioteca, prendendo o foco
+            // do controle e escrevendo num campo que já não está na tela.
+            this.fecharTeclado();
             this.limparPreview();
             this.showImportModal = false;
         },
 
         limparPreview() {
+            // Invalida a busca em voo: sem isto, um preview de 12s (gateway preferido
+            // mudo + corrida) resolvia DEPOIS do modal fechado, repunha importStatus='ok'
+            // com o cartucho antigo, e a próxima abertura mostrava um preview fantasma sem
+            // CID no campo — com Guardar e Jogar desligados e sem como voltar às abas.
+            this._previewToken++;
             clearTimeout(this._demoraTimer);
             this.importStatus = '';
             this.importErro = '';
@@ -615,8 +648,12 @@ export function cartuchoApp() {
                 }, SCAN_AVISO_DURACAO);
                 return;
             }
-            this.scanStatus = 'achou';
+            // A ordem importa: `stopScanner` limpa scanStatus/cameraStatus de forma
+            // síncrona, então marcar 'achou' antes dele deixava o estado verde inalcançável
+            // e o overlay caía no spinner "Opening_Camera" durante a busca do manifesto,
+            // como se a câmera estivesse reabrindo.
             this.stopScanner().catch(e => console.warn('Falha ao parar o scanner', e));
+            this.scanStatus = 'achou';
             this.newCID = cid;
             this.cidStatus = 'valido';
             this.fetchPreview(cid);
@@ -791,6 +828,19 @@ export function cartuchoApp() {
         },
 
         /**
+         * Aviso único para as gravações que não são o acervo (gateway, cache, netplay).
+         * Sem isto o toast anunciava "Using filebase.io" mesmo quando o navegador tinha
+         * recusado a escrita, e a escolha voltava ao valor antigo no recarregamento.
+         * @returns {boolean} repassa o resultado, para quem chama poder parar antes do toast
+         */
+        confirmarGravacao(ok) {
+            if (!ok) {
+                this.flashError('The browser refused to save this setting. In a private window, or with storage full, it will not survive a reload.');
+            }
+            return ok;
+        },
+
+        /**
          * Pede armazenamento persistente assim que existe acervo a perder. Isso só
          * acontecia ao ligar o cache de ROMs, mas a biblioteca corre o mesmo risco: o
          * Safari apaga dados de origem sem visita há sete dias, e leva o acervo junto.
@@ -868,10 +918,7 @@ export function cartuchoApp() {
             this.netplayErro = '';
             this.netplayServer = url;
             this.netplayCampo = url;
-            if (!saveNetplayServer(url)) {
-                this.flashError('The browser refused to save this setting.');
-                return;
-            }
+            if (!this.confirmarGravacao(saveNetplayServer(url))) return;
             this.flashToast(url ? `NetPlay on ${new URL(url).hostname}` : 'NetPlay off');
         },
 
@@ -883,7 +930,7 @@ export function cartuchoApp() {
 
         saveGateway() {
             this.ipfsGateway = normalizeGateway(this.ipfsGateway);
-            saveGatewayPreference(this.ipfsGateway);
+            if (!this.confirmarGravacao(saveGatewayPreference(this.ipfsGateway))) return;
             this.flashToast(`Using ${new URL(this.ipfsGateway).hostname}`);
         },
 
@@ -924,10 +971,10 @@ export function cartuchoApp() {
                     return;
                 }
                 this.customGateways = [...this.customGateways, gateway];
-                saveCustomGateways(this.customGateways);
+                if (!this.confirmarGravacao(saveCustomGateways(this.customGateways))) return;
                 this.gatewayStatus = {
                     ...this.gatewayStatus,
-                    [gateway]: resultado.restrito ? `${resultado.ms}ms (restrito)` : `${resultado.ms}ms`
+                    [gateway]: resultado.restrito ? `${resultado.ms}ms (restricted)` : `${resultado.ms}ms`
                 };
                 this.newGateway = '';
                 this.showAddGateway = false;
@@ -939,7 +986,7 @@ export function cartuchoApp() {
 
         removeCustomGateway(gateway) {
             this.customGateways = this.customGateways.filter(g => g !== gateway);
-            saveCustomGateways(this.customGateways);
+            this.confirmarGravacao(saveCustomGateways(this.customGateways));
             const { [gateway]: _removido, ...resto } = this.gatewayStatus;
             this.gatewayStatus = resto;
             // Se era o gateway em uso, volta para o padrão.

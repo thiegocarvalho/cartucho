@@ -9,12 +9,38 @@ export function gameCid(game) {
     return game.cartucho || game.cid || null;
 }
 
+/**
+ * Uma entrada só serve se der para abrir o jogo com ela: sem CID, sem nome, sem ROM ou
+ * com um core que este app não roda, o que entra na biblioteca é um card que nunca abre.
+ * Vale tanto para arquivo importado quanto para o que já está no localStorage.
+ */
+export function entradaUtilizavel(game) {
+    return !!(game && typeof game === 'object'
+        && gameCid(game) && game.name && game.rom
+        && SUPPORTED_CORES.includes(game.system));
+}
+
+/**
+ * Lê o acervo salvo, descartando entradas inservíveis.
+ *
+ * Conferir só que é um array não bastava: entrada corrompida (edição manual, versão
+ * antiga, import de antes da validação) virava card sem nome — e bastava digitar na busca
+ * para `game.name.toLowerCase()` estourar e a grade inteira sumir da tela.
+ */
 export function loadLibrary() {
     const stored = localStorage.getItem(STORAGE_KEYS.library);
     if (!stored) return [];
     try {
         const parsed = JSON.parse(stored);
-        return Array.isArray(parsed) ? parsed : [];
+        if (!Array.isArray(parsed)) return [];
+
+        const bons = parsed.filter(entradaUtilizavel);
+        if (bons.length !== parsed.length) {
+            // Só some do storage na próxima gravação, e tudo bem: era entrada que não
+            // abria jogo nenhum. O CID de quem exportou antes continua válido na rede.
+            console.warn(`Biblioteca salva tinha ${parsed.length - bons.length} entrada(s) inservível(is); ignoradas.`);
+        }
+        return bons;
     } catch (e) {
         console.error('Não foi possível ler a biblioteca salva', e);
         return [];
@@ -158,7 +184,10 @@ export function downloadLibrary(library) {
     link.href = url;
     link.download = nome;
     link.click();
-    URL.revokeObjectURL(url);
+    // Revogar no mesmo tique do clique corre com o início do download em alguns
+    // navegadores e o arquivo simplesmente não sai — e agora existe um toast afirmando
+    // que o backup foi salvo, o que seria pior que o silêncio de antes.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
     return nome;
 }
 
@@ -178,17 +207,6 @@ export function readLibraryFile(file) {
         reader.onerror = () => reject(reader.error);
         reader.readAsText(file);
     });
-}
-
-/**
- * Uma entrada de arquivo exportado só serve se der para abrir o jogo com ela: sem CID,
- * sem ROM ou com um core que este app não roda, o que entra na biblioteca é um card que
- * nunca abre. Antes qualquer array JSON passava direto.
- */
-function entradaUtilizavel(game) {
-    return !!(game && typeof game === 'object'
-        && gameCid(game) && game.name && game.rom
-        && SUPPORTED_CORES.includes(game.system));
 }
 
 /**

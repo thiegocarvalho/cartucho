@@ -61,7 +61,7 @@ const EJECT_HOLD = 3000;
  */
 function nomeDoControle(gp) {
     const cru = (gp?.id || '').trim();
-    if (!cru) return 'Controle';
+    if (!cru) return 'Gamepad';
     const semParenteses = cru.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
     const nome = semParenteses || cru;
     return nome.length > 32 ? `${nome.slice(0, 31)}…` : nome;
@@ -223,11 +223,20 @@ export function gamepadModule() {
          * pelos elementos de trás do modal.
          */
         updateFocusCache() {
-            // O teclado vem antes de tudo: enquanto está aberto, é a única coisa navegável.
+            // Ordem = profundidade na tela. O teclado vem primeiro (fica por cima de tudo) e
+            // as confirmações vêm antes dos modais que as abriram.
+            //
+            // pendingDelete e pendingCacheLimit estavam de fora: como vivem no topo do body,
+            // fora de <nav> e <main>, o ramo "sem modal" filtrava os botões deles para fora
+            // da lista — o controle seguia andando pela grade ATRÁS da confirmação, e A
+            // abria um jogo enquanto a pergunta "remover?" continuava na tela, sem que
+            // Cancelar ou Remover pudessem ser alcançados.
             const openModal = this.tecladoAberto ? 'tecladoAberto'
-                : this.showShareModal ? 'showShareModal'
-                    : this.showImportModal ? 'showImportModal'
-                        : null;
+                : this.pendingCacheLimit ? 'pendingCacheLimit'
+                    : this.pendingDelete ? 'pendingDelete'
+                        : this.showShareModal ? 'showShareModal'
+                            : this.showImportModal ? 'showImportModal'
+                                : null;
 
             const elements = openModal
                 ? Array.from(document.querySelectorAll(`.fixed[x-show="${openModal}"] .nav-item`))
@@ -246,6 +255,18 @@ export function gamepadModule() {
          * Sem candidato na direção pedida, cai no passo linear de antes — que ainda é o
          * comportamento certo para listas de uma coluna.
          */
+        /**
+         * Repinta o anel de foco no índice atual, sem mover nada. Serve para quando o
+         * Alpine recria os elementos focados debaixo do controle: alternar ABC/abc troca o
+         * `:key` das 26 letras, o `gamepad-focus` some junto com os nós antigos e o usuário
+         * fica sem âncora visível até apertar uma direção — na TV, no meio de um CID.
+         */
+        refocarAtual() {
+            const elements = this.getFocusableElements();
+            if (loop.focoIndex < 0 || !elements[loop.focoIndex]) return;
+            elements.forEach((el, idx) => el.classList.toggle('gamepad-focus', idx === loop.focoIndex));
+        },
+
         updateFocus(dir) {
             const elements = this.getFocusableElements();
             if (elements.length === 0) return;
