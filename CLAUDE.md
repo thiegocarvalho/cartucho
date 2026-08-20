@@ -272,6 +272,12 @@ permitidos. O essencial ao mexer no markup:
   Vermelho e âmbar já significam perigo e atenção no app; gastá-los como enfeite tira o
   significado deles. Conteúdo específico (o que é o manifesto, por que existem gateways, o que
   fica gravado no aparelho) vale mais que adjetivo.
+- **O leitor de QR não desenha enquadramento.** O `qrbox` do html5-qrcode é um quadrado de
+  tamanho fixo sobre um vídeo responsivo: só coincide com o vídeo por acidente, e em qualquer
+  outra largura fica torto. Sem ele a leitura vale o quadro inteiro, que é mais fácil de
+  acertar. No lugar dele há uma linha de status no canto (`scanStatus`: procurando, achou,
+  não é cartucho) — o problema real não era mira, era não haver sinal nenhum ao ler um QR que
+  não fosse um Cartucho.
 - **O QR de compartilhar é validado por decodificação, não por aparência.** Ele estava
   ilegível para qualquer leitor — `colorLight: 'transparent'` deixa as bordas dos módulos se
   acumularem e sujarem o código, e nem uma captura digital perfeita decodificava (27.722
