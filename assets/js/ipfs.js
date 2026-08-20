@@ -10,31 +10,60 @@ const CID_EXACT = new RegExp(`^(${CID_PATTERN})$`);
 const CID_LOOSE = new RegExp(`(${CID_PATTERN})`);
 
 /**
+ * Põe o CID na forma canônica do app.
+ *
+ * O prefixo do multibase diz a codificação, e duas delas são MAIÚSCULAS do mesmo conteúdo:
+ * `B` é base32upper e `F` é base16upper. Baixar por elas funciona, mas o CID é a
+ * identidade do cartucho aqui — o mesmo jogo lido em maiúsculas viraria uma segunda
+ * entrada na biblioteca, com o `findGame` sem enxergar a duplicata e o link compartilhado
+ * saindo diferente do de todo mundo.
+ *
+ * Isso não é hipótese: o modo alfanumérico do QR só carrega maiúsculas, e é comum um
+ * gerador usá-lo por ser mais compacto — daí o QR chegar com a URL inteira em caixa alta.
+ *
+ * Só estas duas descem para minúsculas. `Qm...` (base58btc) e `z...` são sensíveis a
+ * caixa: lá, trocar a caixa muda o conteúdo e destrói o CID.
+ */
+function canonizarCID(cid) {
+    return (cid.startsWith('B') || cid.startsWith('F')) ? cid.toLowerCase() : cid;
+}
+
+/**
  * Extrai um CID de uma string solta, validando o formato.
- * @returns {string|null} o CID, ou null se não houver um válido.
+ * @returns {string|null} o CID canônico, ou null se não houver um válido.
  */
 export function sanitizeCID(text) {
     if (!text) return null;
     const match = text.match(CID_LOOSE);
-    return match && CID_EXACT.test(match[0]) ? match[0] : null;
+    return match && CID_EXACT.test(match[0]) ? canonizarCID(match[0]) : null;
 }
 
 /**
- * Aceita CID cru, link de compartilhamento (?cartucho=CID) ou texto de QR code.
+ * Reduz a CID qualquer coisa que aponte para um cartucho: o CID cru, o link de
+ * compartilhamento (`?cartucho=CID`), a URL de um gateway (`/ipfs/CID` ou
+ * `CID.ipfs.gateway`), `ipfs://CID`, ou o texto lido de um QR code — inclusive quando o
+ * link vem no meio de uma frase.
+ *
+ * É o que faz o campo de import aceitar um link colado e mostrar só o CID: quem
+ * compartilha manda uma URL, e é ela que a pessoa tem na mão para colar.
  * @returns {string|null}
  */
 export function extractCID(text) {
     if (!text) return null;
 
     // Busca manual pelo parâmetro primeiro: funciona mesmo em URLs malformadas (file://).
-    if (text.includes('cartucho=')) {
-        const match = text.match(/[?&]cartucho=([^&?#\s"']+)/);
+    // Sem sensibilidade a caixa por causa do QR em maiúsculas — lá o link chega inteiro
+    // como `?CARTUCHO=`, e a busca exata não achava nada.
+    if (/cartucho=/i.test(text)) {
+        const match = text.match(/[?&]cartucho=([^&?#\s"']+)/i);
         if (match && match[1]) return sanitizeCID(match[1]);
     }
 
     try {
-        const cartucho = new URL(text).searchParams.get('cartucho');
-        if (cartucho) return sanitizeCID(cartucho);
+        const params = new URL(text).searchParams;
+        for (const [chave, valor] of params) {
+            if (chave.toLowerCase() === 'cartucho' && valor) return sanitizeCID(valor);
+        }
     } catch (e) {
         // Não era URL; cai no parsing direto.
     }

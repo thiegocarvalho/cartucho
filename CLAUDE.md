@@ -89,6 +89,18 @@ depende de `this` (`isPlaying`, modais, `stopGame`). O markup usa `x-data="cartu
 parênteses — é `Alpine.data`, não uma função global).
 
 ### Cartucho vs ROM: dois CIDs
+`extractCID()` (ipfs.js) é o funil por onde entra qualquer coisa que aponte para um cartucho:
+CID cru, link de compartilhamento (`?cartucho=`), URL de gateway (`/ipfs/CID` ou
+`CID.ipfs.gateway`), `ipfs://`, ou link solto no meio de uma frase. É por isso que colar um link
+no campo de import mostra só o CID — quem compartilha manda URL, não CID.
+
+**A saída é canônica.** `B` (base32upper) e `F` (base16upper) descem para minúsculas, porque o
+CID é a identidade do cartucho: o mesmo jogo lido em caixa alta viraria uma segunda entrada na
+biblioteca, invisível para o `findGame`. Não é hipótese — o modo alfanumérico do QR só carrega
+maiúsculas e é comum um gerador usá-lo por ser mais compacto, então o QR chega com a URL inteira
+em caixa alta (daí o `?cartucho=` também ser casado sem sensibilidade a caixa). `Qm...`
+(base58btc) e `z...` **não** podem ser rebaixados: ali a caixa faz parte do conteúdo.
+
 Um "Cartucho" é um manifesto JSON no IPFS. O CID dele é a identidade do jogo; o manifesto aponta
 para um CID **separado** com o binário da ROM. `normalizeCartucho()` em `library.js` é o ponto único
 por onde passam todos os caminhos de import (URL, QR, CID manual) — campo novo de manifesto se
