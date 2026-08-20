@@ -262,6 +262,18 @@ permitidos. O essencial ao mexer no markup:
 - As ações `Add_Cartucho` e `Settings` ficam **fora** do `<nav>` rolável, fixas no rodapé da
   barra — dentro dele, sumiam quando a lista de consoles crescia.
 - Configurações é **página** (`activePage === 'Settings'`, com `?page=Settings`), não modal.
+- **O QR de compartilhar é validado por decodificação, não por aparência.** Ele estava
+  ilegível para qualquer leitor — `colorLight: 'transparent'` deixa as bordas dos módulos se
+  acumularem e sujarem o código, e nem uma captura digital perfeita decodificava (27.722
+  pixels escuros contra 19.468 do mesmo código com fundo branco). O preenchimento claro
+  **precisa ser opaco**. As outras três regras vieram de medição: nível `M` em vez de `H`
+  (sem logo sobreposto, 30% de redundância só encolhe os módulos: 41 contra 57, e módulo
+  maior é o que decide leitura de longe), lado sempre múltiplo inteiro do número de módulos
+  (tamanho quebrado gera colunas de larguras diferentes — foi assim que o mesmo código
+  passava em 512px e falhava em 400px), e zona silenciosa de 4 módulos, que é o mínimo da
+  norma. O indigo da marca decodifica igual ao preto em todos os testes, então fica.
+  Para conferir depois de mexer: gere o QR e decodifique com o próprio `html5-qrcode`
+  (`leitor.scanFile`), reduzindo e desfocando a imagem para simular câmera de longe.
 - **Preview de link é fixo, por decisão.** As meta tags do `index.html` trazem a arte do app
   (`assets/img/og-cover.png`, 1200×630, texto em inglês) e **não podem ficar vazias**: robô de
   rede social não executa JS, então é só isso que ele lê — deixar `og:image` vazio para

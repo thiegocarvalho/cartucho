@@ -131,6 +131,35 @@ export const IMPORT_AVISO_DEMORA = 3500;
 /** Quanto tempo o status da câmera fica em "não é um Cartucho" antes de voltar a procurar. */
 export const SCAN_AVISO_DURACAO = 2500;
 
+/**
+ * QR de compartilhamento. Cada valor aqui saiu de teste de decodificação, não de gosto:
+ * o QR era gerado com `colorLight: 'transparent'` e **não decodificava nem numa captura
+ * digital perfeita** — sem preenchimento claro opaco, as bordas dos módulos se acumulam e
+ * sujam o código (27.722 pixels escuros contra 19.468 do mesmo código com fundo branco).
+ *
+ * `M` e não `H`: sem logo sobreposto não há motivo para 30% de redundância, e o nível
+ * baixo rende menos módulos (41 contra 57) — módulo maior é o que decide leitura de longe,
+ * mais que correção de erro. Medido: ambos aguentam 140px com desfoque; M chega lá com
+ * módulos 1,4× maiores.
+ *
+ * A escala inteira importa: o qrcodejs arredonda a largura de cada módulo, e tamanho que
+ * não é múltiplo do número de módulos gera colunas de larguras diferentes — foi assim que
+ * o nível Q a 400px falhou enquanto o mesmo Q a 512px passou.
+ */
+export const QR_NIVEL = 'M';
+/**
+ * Pixels de tela por módulo. O lado exibido é sempre `módulos × escala`, e o canvas é
+ * desenhado no dobro disso — a redução vira 2:1 exata, sem aliasing, e em tela retina cai
+ * 1:1 em pixel físico. Tamanho que não é múltiplo do número de módulos produz colunas de
+ * larguras diferentes, e aí o leitor erra: com o canvas em 410px reduzido para 140, o
+ * código só decodificava quando havia desfoque suavizando as bordas.
+ */
+export const QR_ESCALA = 5;
+/** Escala em tela baixa (o modal comprime tudo abaixo de 700px de altura). */
+export const QR_ESCALA_COMPACTA = 3;
+/** Zona silenciosa exigida pela norma, em módulos. Menos que isso e leitor nenhum acha o código. */
+export const QR_ZONA_SILENCIOSA = 4;
+
 /** Bibliotecas carregadas sob demanda — ver vendor.js. */
 export const QRCODE_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
 export const HTML5_QRCODE_URL = 'https://unpkg.com/html5-qrcode';

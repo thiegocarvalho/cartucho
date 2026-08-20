@@ -2,7 +2,8 @@
 // A lógica de verdade mora nos módulos importados abaixo.
 import {
     KNOWN_GATEWAYS, DEFAULT_GATEWAY, IMPORT_AVISO_DEMORA, SCAN_AVISO_DURACAO,
-    CACHE_PASSO, CACHE_FRACAO_DA_QUOTA, CACHE_MAX_FALLBACK
+    CACHE_PASSO, CACHE_FRACAO_DA_QUOTA, CACHE_MAX_FALLBACK,
+    QR_NIVEL, QR_ESCALA, QR_ESCALA_COMPACTA, COLORS
 } from './config.js';
 import { ICONS } from './icons.js';
 import {
@@ -1018,15 +1019,50 @@ export function cartuchoApp() {
 
             const container = document.getElementById('qrcode-container');
             if (!container) return;
-            container.innerHTML = '';
-            new QRCode(container, {
+
+            const opcoes = {
                 text: this.shareLink,
-                width: 200,
-                height: 200,
-                colorDark: '#4f46e5',
-                colorLight: 'transparent',
-                correctLevel: QRCode.CorrectLevel.H
-            });
+                colorDark: COLORS.primary,
+                // NUNCA 'transparent': sem preenchimento opaco entre os módulos o código
+                // fica ilegível para qualquer leitor, mesmo parecendo certo na tela.
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel[QR_NIVEL]
+            };
+
+            // Quantos módulos este link gera? Depende do tamanho da URL (CID v0 e v1 têm
+            // comprimentos diferentes), então é medido, não presumido: todo o resto do
+            // dimensionamento é múltiplo inteiro disso.
+            const modulos = this.contarModulos(opcoes);
+            const compacto = window.matchMedia('(max-height: 700px)').matches;
+            const exibido = modulos * (compacto ? QR_ESCALA_COMPACTA : QR_ESCALA);
+
+            container.innerHTML = '';
+            // Canvas no dobro do exibido: retina ganha 1:1 em pixel físico e a redução é
+            // 2:1 exata. Por isso o tamanho sai daqui e não do CSS — uma caixa fixa de
+            // 200px forçaria uma razão quebrada, que é o que confundia o leitor.
+            new QRCode(container, { ...opcoes, width: exibido * 2, height: exibido * 2 });
+
+            const canvas = container.querySelector('canvas');
+            if (canvas) {
+                canvas.style.width = `${exibido}px`;
+                canvas.style.height = `${exibido}px`;
+            }
+        },
+
+        /**
+         * Número de módulos do QR, por uma geração descartável.
+         * Usa a instância interna do qrcodejs (não há API pública para isso); se um dia ela
+         * mudar de nome, o fallback mantém o QR funcionando com um tamanho fixo decente.
+         */
+        contarModulos(opcoes) {
+            try {
+                const sonda = new QRCode(document.createElement('div'), { ...opcoes, width: 64, height: 64 });
+                const total = sonda._oQRCode?.getModuleCount?.();
+                return Number.isInteger(total) && total > 0 ? total : 45;
+            } catch (e) {
+                console.warn('Não deu para medir os módulos do QR; usando tamanho padrão.', e);
+                return 45;
+            }
         },
 
         async copyShareLink() {

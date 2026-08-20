@@ -50,7 +50,7 @@
     <!-- CSS do Tailwind pré-compilado (só as classes usadas). Substitui o Play CDN, que
          eram 440 KB de JS compilando CSS no browser a cada carga.
          Regenerar após mexer em classes:  npm run css   (ver README) -->
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=e7fa5136">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=d1a81f47">
 
     <!-- Fontes: só os pesos usados (Inter 400/700, Orbitron 700/900, Silkscreen 400/700).
          Carregadas sem bloquear o render — display=swap mostra o texto na fonte de sistema
@@ -73,21 +73,21 @@
         <script type="importmap">
             {
                 "imports": {
-                        "./assets/js/app.js": "./assets/js/app.js?v=e7fa5136",
-                        "./assets/js/config.js": "./assets/js/config.js?v=e7fa5136",
-                        "./assets/js/emulator.js": "./assets/js/emulator.js?v=e7fa5136",
-                        "./assets/js/gamepad.js": "./assets/js/gamepad.js?v=e7fa5136",
-                        "./assets/js/icons.js": "./assets/js/icons.js?v=e7fa5136",
-                        "./assets/js/ipfs.js": "./assets/js/ipfs.js?v=e7fa5136",
-                        "./assets/js/library.js": "./assets/js/library.js?v=e7fa5136",
-                        "./assets/js/page-meta.js": "./assets/js/page-meta.js?v=e7fa5136",
-                        "./assets/js/rom-cache.js": "./assets/js/rom-cache.js?v=e7fa5136",
-                        "./assets/js/vendor.js": "./assets/js/vendor.js?v=e7fa5136"
+                        "./assets/js/app.js": "./assets/js/app.js?v=d1a81f47",
+                        "./assets/js/config.js": "./assets/js/config.js?v=d1a81f47",
+                        "./assets/js/emulator.js": "./assets/js/emulator.js?v=d1a81f47",
+                        "./assets/js/gamepad.js": "./assets/js/gamepad.js?v=d1a81f47",
+                        "./assets/js/icons.js": "./assets/js/icons.js?v=d1a81f47",
+                        "./assets/js/ipfs.js": "./assets/js/ipfs.js?v=d1a81f47",
+                        "./assets/js/library.js": "./assets/js/library.js?v=d1a81f47",
+                        "./assets/js/page-meta.js": "./assets/js/page-meta.js?v=d1a81f47",
+                        "./assets/js/rom-cache.js": "./assets/js/rom-cache.js?v=d1a81f47",
+                        "./assets/js/vendor.js": "./assets/js/vendor.js?v=d1a81f47"
                 }
         }
         </script>
         <!-- /importmap -->
-    <script type="module" src="assets/js/app.js?v=e7fa5136"></script>
+    <script type="module" src="assets/js/app.js?v=d1a81f47"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 
@@ -337,6 +337,18 @@
                     </svg>
                     <span>Settings</span>
                 </button>
+
+                <button
+                    @click="if (isPlaying) { stopGame('About'); } else { activePage = 'About'; if (window.innerWidth < 1024) sidebarOpen = false; }"
+                    :class="activePage === 'About' ? 'bg-indigo-600/20 text-indigo-300 border-indigo-600/40' : 'bg-slate-800/40 hover:bg-slate-800/60 text-slate-400 border-white/5'"
+                    class="nav-item w-full font-retro text-[12px] tracking-widest min-h-[44px] py-3 px-4 rounded-xl border transition-all flex items-center space-x-3 uppercase">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>About</span>
+                </button>
             </div>
 
             <!-- Sidebar Footer: Manage Library -->
@@ -360,7 +372,7 @@
 
                 <!-- Search & Layout Header (Dashboard Top) -->
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-10"
-                    x-show="!isPlaying && activePage !== 'Settings'">
+                    x-show="!isPlaying && activePage !== 'Settings' && activePage !== 'About'">
                     <h1 class="text-xl md:text-2xl font-bold text-white font-retro tracking-[0.1em] uppercase opacity-90"
                         x-text="activePage === 'Home' ? 'Library' : activePage"></h1>
 
@@ -380,7 +392,7 @@
                 </div>
 
                 <!-- DASHBOARD VIEW: Hero + Grid -->
-                <div x-show="!isPlaying && activePage !== 'Settings'" class="space-y-12">
+                <div x-show="!isPlaying && activePage !== 'Settings' && activePage !== 'About'" class="space-y-12">
 
                     <!-- DESTAQUE
                          Abaixo de lg empilha: arte em cima, texto embaixo. O layout lado a
@@ -763,6 +775,126 @@
                     </div>
                 </div>
 
+                <!-- PÁGINA: ABOUT -->
+                <div x-show="!isPlaying && activePage === 'About'" x-cloak class="max-w-6xl pb-10"
+                     x-transition:enter="transition ease-out duration-500"
+                     x-transition:enter-start="opacity-0 translate-y-8"
+                     x-transition:enter-end="opacity-100 translate-y-0">
+                    <header class="mb-10 text-center md:text-left">
+                        <h2 class="text-3xl font-black text-white font-orbitron tracking-tighter uppercase italic">
+                            About Cartucho//IPFS</h2>
+                        <p class="text-[15px] text-slate-400 mt-2 max-w-2xl">Information about the decentralized vision, technology stack, and future roadmap of this project.</p>
+                    </header>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+                        <!-- Background glow effect behind the grid -->
+                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-neon-glow opacity-30 pointer-events-none rounded-full blur-3xl"></div>
+
+                        <!-- What is Cartucho//IPFS -->
+                        <section class="group glass-panel rounded-3xl p-6 sm:p-8 flex flex-col hover:-translate-y-1.5 hover:shadow-neon hover:border-indigo-500/30 transition-all duration-300 relative overflow-hidden z-10 bg-black/40 backdrop-blur-xl">
+                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition-all"></div>
+                            <h3 class="text-[16px] font-retro uppercase text-indigo-400 tracking-[0.2em] mb-4 flex items-center gap-3">
+                                <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                The Project
+                            </h3>
+                            <div class="space-y-4 text-[14px] text-slate-300 leading-relaxed relative z-10">
+                                <p>
+                                    <strong class="text-white">Cartucho//IPFS</strong> is a decentralized web application designed to organize and play classic retro games directly in your browser.
+                                </p>
+                                <p>
+                                    Our goal is to build an open, censorship-resistant library that gives you full control over your retro gaming experience.
+                                </p>
+                            </div>
+                        </section>
+
+                        <!-- What is IPFS -->
+                        <section class="group glass-panel rounded-3xl p-6 sm:p-8 flex flex-col hover:-translate-y-1.5 hover:shadow-[0_0_20px_rgba(52,211,153,0.3)] hover:border-emerald-500/30 transition-all duration-300 relative overflow-hidden z-10 bg-black/40 backdrop-blur-xl">
+                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
+                            <h3 class="text-[16px] font-retro uppercase text-emerald-400 tracking-[0.2em] mb-4 flex items-center gap-3">
+                                <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+                                IPFS Technology
+                            </h3>
+                            <div class="space-y-4 text-[14px] text-slate-300 leading-relaxed relative z-10">
+                                <p>
+                                    We use the <strong class="text-white">InterPlanetary File System (IPFS)</strong>, a peer-to-peer network for storing and sharing data in a distributed file system.
+                                </p>
+                                <p>
+                                    This ensures that the platform is resilient, meaning it doesn't rely on a single centralized server that could go down at any time.
+                                </p>
+                            </div>
+                        </section>
+
+                        <!-- Emulator.js -->
+                        <section class="group glass-panel rounded-3xl p-6 sm:p-8 flex flex-col hover:-translate-y-1.5 hover:shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:border-amber-500/30 transition-all duration-300 relative overflow-hidden z-10 bg-black/40 backdrop-blur-xl">
+                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all"></div>
+                            <h3 class="text-[16px] font-retro uppercase text-amber-400 tracking-[0.2em] mb-4 flex items-center gap-3">
+                                <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
+                                Emulation
+                            </h3>
+                            <div class="space-y-4 text-[14px] text-slate-300 leading-relaxed relative z-10">
+                                <p>
+                                    To provide a seamless gaming experience, we integrate <strong class="text-white">EmulatorJS</strong>.
+                                </p>
+                                <p>
+                                    EmulatorJS is a fantastic open-source emulation engine that runs right in your browser via WebAssembly, supporting a wide range of classic consoles.
+                                </p>
+                            </div>
+                        </section>
+
+                        <!-- Piracy Disclaimer -->
+                        <section class="group glass-panel rounded-3xl p-6 sm:p-8 flex flex-col bg-red-950/20 border-red-500/20 hover:border-red-500/40 hover:-translate-y-1.5 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] transition-all duration-300 relative overflow-hidden z-10 backdrop-blur-xl">
+                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-red-500/10 rounded-full blur-xl group-hover:bg-red-500/20 transition-all"></div>
+                            <h3 class="text-[16px] font-retro uppercase text-red-400 tracking-[0.2em] mb-4 flex items-center gap-3">
+                                <svg class="w-6 h-6 text-red-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                Disclaimer
+                            </h3>
+                            <div class="space-y-4 text-[14px] text-red-200/80 leading-relaxed relative z-10">
+                                <p>
+                                    <strong class="text-red-300">Cartucho//IPFS does NOT provide, host, or distribute any ROMs, BIOS files, or copyrighted material.</strong>
+                                </p>
+                                <p>
+                                    This project is strictly a tool for playing games you already legally own. You are responsible for ensuring you have the legal right to use any files you load into the emulator.
+                                </p>
+                            </div>
+                        </section>
+                        
+                        <!-- Coming Soon: Node Cartucho//IPFS -->
+                        <section class="group glass-panel rounded-3xl p-6 sm:p-8 flex flex-col md:col-span-2 bg-gradient-to-br from-indigo-900/20 to-purple-900/10 border-indigo-500/20 hover:border-indigo-400/50 hover:-translate-y-1.5 hover:shadow-neon transition-all duration-300 relative overflow-hidden z-10 backdrop-blur-xl">
+                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==')] opacity-30"></div>
+                            <div class="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-700"></div>
+                            
+                            <!-- Coming Soon Badge -->
+                            <div class="absolute top-0 right-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-[10px] font-bold px-4 py-2 uppercase tracking-[0.2em] rounded-bl-2xl text-white shadow-lg overflow-hidden">
+                                <span class="relative z-10">Coming Soon</span>
+                                <div class="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none"></div>
+                            </div>
+                            
+                            <div class="relative z-10 flex flex-col md:flex-row gap-6 items-start md:items-center">
+                                <div class="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 shrink-0">
+                                    <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-[18px] font-retro uppercase text-indigo-300 tracking-[0.2em] mb-3">
+                                        Cartucho//IPFS Node
+                                    </h3>
+                                    <div class="space-y-2 text-[14px] text-slate-300 leading-relaxed max-w-3xl">
+                                        <p>
+                                            In the future, you will be able to run your own <strong class="text-white">Cartucho//IPFS Node</strong>.
+                                        </p>
+                                        <p>
+                                            This node will act as your personal gateway and storage server. You'll be able to store all your games securely on your own hardware, and stream or play them from anywhere in the world on any device, entirely decentralized and private.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
                 <!-- PLAYER VIEW: Emulator -->
                 <div x-show="isPlaying" class="w-full h-full flex flex-col min-h-0">
                     <!-- Emulator Wrapper -->
@@ -1129,9 +1261,15 @@
                         <div
                             class="absolute -inset-4 bg-indigo-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         </div>
+                        <!-- p-5 e não p-4: a zona silenciosa da norma é de 4 módulos, e com 41
+                             módulos em 200px cada um mede ~4,9px — 16px ficava abaixo do mínimo. -->
                         <div
-                            class="relative bg-white p-4 rounded-3xl shadow-2xl transform transition-transform duration-500 group-hover:scale-105">
-                            <div id="qrcode-container" class="w-[200px] h-[200px] [@media(max-height:700px)]:w-[140px] [@media(max-height:700px)]:h-[140px] [@media(max-height:700px)]:[&>*]:!w-full [@media(max-height:700px)]:[&>*]:!h-full"></div>
+                            class="relative bg-white p-5 rounded-3xl shadow-2xl transform transition-transform duration-500 group-hover:scale-105">
+                            <!-- Sem tamanho fixo: quem dimensiona é o generateQRCode, porque o
+                                 lado precisa ser múltiplo do número de módulos (que varia com o
+                                 tamanho do link) para os módulos saírem todos iguais. -->
+                            <div id="qrcode-container" class="flex items-center justify-center"
+                                role="img" aria-label="QR code with the cartridge link"></div>
                         </div>
                     </div>
 
