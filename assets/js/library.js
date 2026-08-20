@@ -144,6 +144,10 @@ export function normalizeCartucho(data, cartuchoCid) {
             name: data.name,
             system: data.system,
             rom: romCid,           // o CID do binário fica separado
+            // PSX, Sega CD, Saturn e 3DO não bootam sem BIOS. Sem este campo, cartucho
+            // desses sistemas vira um card que nunca abre — e o defeito só aparece na
+            // máquina de quem recebeu o link. Aceita CID ou URL, como os campos de mídia.
+            bios: data.bios_cid || data.bios || null,
             cover: data.media?.cover || data.cover || null,
             screenshot: data.media?.screenshot || data.screenshot || null,
             box3d: data.media?.box3d || data.box3d || null,
