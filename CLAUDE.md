@@ -261,7 +261,17 @@ permitidos. O essencial ao mexer no markup:
   com véu clicável.
 - As ações `Add_Cartucho` e `Settings` ficam **fora** do `<nav>` rolável, fixas no rodapé da
   barra — dentro dele, sumiam quando a lista de consoles crescia.
-- Configurações é **página** (`activePage === 'Settings'`, com `?page=Settings`), não modal.
+- Configurações e About são **páginas** (`activePage`, com `?page=`), não modais. Página fixa
+  nova precisa entrar em `PAGINAS_FIXAS` (app.js): `menuItems` só tem Home e os consoles do
+  acervo, então sem isso `stopGame('About')` recarrega e cai na Home.
+- **A voz da interface é a do projeto, não a de landing page.** O About nasceu com quatro cards
+  de cores diferentes (indigo, verde, âmbar, vermelho), um brilho atrás de cada, ícone por card,
+  selo "Coming Soon" com brilho deslizante e ícone pulsando — e um texto que não dizia nada
+  ("our goal is to build an open, censorship-resistant library"). Foi refeito com a forma da
+  página de configurações: painel de vidro, título em indigo, texto de leitura, um acento só.
+  Vermelho e âmbar já significam perigo e atenção no app; gastá-los como enfeite tira o
+  significado deles. Conteúdo específico (o que é o manifesto, por que existem gateways, o que
+  fica gravado no aparelho) vale mais que adjetivo.
 - **O QR de compartilhar é validado por decodificação, não por aparência.** Ele estava
   ilegível para qualquer leitor — `colorLight: 'transparent'` deixa as bordas dos módulos se
   acumularem e sujarem o código, e nem uma captura digital perfeita decodificava (27.722

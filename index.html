@@ -50,7 +50,7 @@
     <!-- CSS do Tailwind pré-compilado (só as classes usadas). Substitui o Play CDN, que
          eram 440 KB de JS compilando CSS no browser a cada carga.
          Regenerar após mexer em classes:  npm run css   (ver README) -->
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=d1a81f47">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=1c94e15b">
 
     <!-- Fontes: só os pesos usados (Inter 400/700, Orbitron 700/900, Silkscreen 400/700).
          Carregadas sem bloquear o render — display=swap mostra o texto na fonte de sistema
@@ -73,21 +73,21 @@
         <script type="importmap">
             {
                 "imports": {
-                        "./assets/js/app.js": "./assets/js/app.js?v=d1a81f47",
-                        "./assets/js/config.js": "./assets/js/config.js?v=d1a81f47",
-                        "./assets/js/emulator.js": "./assets/js/emulator.js?v=d1a81f47",
-                        "./assets/js/gamepad.js": "./assets/js/gamepad.js?v=d1a81f47",
-                        "./assets/js/icons.js": "./assets/js/icons.js?v=d1a81f47",
-                        "./assets/js/ipfs.js": "./assets/js/ipfs.js?v=d1a81f47",
-                        "./assets/js/library.js": "./assets/js/library.js?v=d1a81f47",
-                        "./assets/js/page-meta.js": "./assets/js/page-meta.js?v=d1a81f47",
-                        "./assets/js/rom-cache.js": "./assets/js/rom-cache.js?v=d1a81f47",
-                        "./assets/js/vendor.js": "./assets/js/vendor.js?v=d1a81f47"
+                        "./assets/js/app.js": "./assets/js/app.js?v=1c94e15b",
+                        "./assets/js/config.js": "./assets/js/config.js?v=1c94e15b",
+                        "./assets/js/emulator.js": "./assets/js/emulator.js?v=1c94e15b",
+                        "./assets/js/gamepad.js": "./assets/js/gamepad.js?v=1c94e15b",
+                        "./assets/js/icons.js": "./assets/js/icons.js?v=1c94e15b",
+                        "./assets/js/ipfs.js": "./assets/js/ipfs.js?v=1c94e15b",
+                        "./assets/js/library.js": "./assets/js/library.js?v=1c94e15b",
+                        "./assets/js/page-meta.js": "./assets/js/page-meta.js?v=1c94e15b",
+                        "./assets/js/rom-cache.js": "./assets/js/rom-cache.js?v=1c94e15b",
+                        "./assets/js/vendor.js": "./assets/js/vendor.js?v=1c94e15b"
                 }
         }
         </script>
         <!-- /importmap -->
-    <script type="module" src="assets/js/app.js?v=d1a81f47"></script>
+    <script type="module" src="assets/js/app.js?v=1c94e15b"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 
@@ -775,122 +775,119 @@
                     </div>
                 </div>
 
-                <!-- PÁGINA: ABOUT -->
-                <div x-show="!isPlaying && activePage === 'About'" x-cloak class="max-w-6xl pb-10"
-                     x-transition:enter="transition ease-out duration-500"
-                     x-transition:enter-start="opacity-0 translate-y-8"
-                     x-transition:enter-end="opacity-100 translate-y-0">
-                    <header class="mb-10 text-center md:text-left">
+                <!-- PÁGINA: ABOUT
+                     Segue a mesma forma da de configurações: painéis de vidro, título em
+                     indigo, texto de leitura. Um acento só — cor por card (indigo, verde,
+                     âmbar, vermelho) fazia cada bloco parecer de um app diferente, e aqui
+                     vermelho já significa perigo e âmbar, atenção. -->
+                <div x-show="!isPlaying && activePage === 'About'" x-cloak class="max-w-6xl pb-10">
+                    <header class="mb-8">
                         <h2 class="text-3xl font-black text-white font-orbitron tracking-tighter uppercase italic">
-                            About Cartucho//IPFS</h2>
-                        <p class="text-[15px] text-slate-400 mt-2 max-w-2xl">Information about the decentralized vision, technology stack, and future roadmap of this project.</p>
+                            About</h2>
+                        <p class="text-[15px] text-slate-400 mt-2">How a cartridge works, where the games live and what
+                            stays on this device.</p>
                     </header>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
-                        <!-- Background glow effect behind the grid -->
-                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-neon-glow opacity-30 pointer-events-none rounded-full blur-3xl"></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                        <!-- What is Cartucho//IPFS -->
-                        <section class="group glass-panel rounded-3xl p-6 sm:p-8 flex flex-col hover:-translate-y-1.5 hover:shadow-neon hover:border-indigo-500/30 transition-all duration-300 relative overflow-hidden z-10 bg-black/40 backdrop-blur-xl">
-                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition-all"></div>
-                            <h3 class="text-[16px] font-retro uppercase text-indigo-400 tracking-[0.2em] mb-4 flex items-center gap-3">
-                                <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                The Project
-                            </h3>
-                            <div class="space-y-4 text-[14px] text-slate-300 leading-relaxed relative z-10">
-                                <p>
-                                    <strong class="text-white">Cartucho//IPFS</strong> is a decentralized web application designed to organize and play classic retro games directly in your browser.
-                                </p>
-                                <p>
-                                    Our goal is to build an open, censorship-resistant library that gives you full control over your retro gaming experience.
-                                </p>
-                            </div>
+                        <section class="glass-panel rounded-3xl p-6 sm:p-8">
+                            <h3 class="text-[16px] font-retro uppercase text-indigo-400 tracking-[0.2em] mb-3">
+                                What a cartridge is</h3>
+                            <p class="text-[14px] text-slate-300 leading-relaxed mb-4">
+                                A Cartucho is a small JSON file on IPFS. Its CID — the hash of its content — is the
+                                game's identity, and it points to a separate CID holding the ROM itself.
+                            </p>
+                            <pre class="bg-black/40 border border-white/5 rounded-xl p-4 text-[13px] font-mono text-slate-400 overflow-x-auto"><code>{
+  "name": "Ultimate Mortal Kombat 3",
+  "system": "segaMD",
+  "rom_cid": "QmZfuW…",
+  "cover": "bafkrei…"
+}</code></pre>
+                            <p class="text-[14px] text-slate-300 leading-relaxed mt-4">
+                                Importing a game adds that CID to your library. Nothing is uploaded, and nothing is
+                                copied to a server of ours — there is no server of ours.
+                            </p>
                         </section>
 
-                        <!-- What is IPFS -->
-                        <section class="group glass-panel rounded-3xl p-6 sm:p-8 flex flex-col hover:-translate-y-1.5 hover:shadow-[0_0_20px_rgba(52,211,153,0.3)] hover:border-emerald-500/30 transition-all duration-300 relative overflow-hidden z-10 bg-black/40 backdrop-blur-xl">
-                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
-                            <h3 class="text-[16px] font-retro uppercase text-emerald-400 tracking-[0.2em] mb-4 flex items-center gap-3">
-                                <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
-                                IPFS Technology
-                            </h3>
-                            <div class="space-y-4 text-[14px] text-slate-300 leading-relaxed relative z-10">
-                                <p>
-                                    We use the <strong class="text-white">InterPlanetary File System (IPFS)</strong>, a peer-to-peer network for storing and sharing data in a distributed file system.
-                                </p>
-                                <p>
-                                    This ensures that the platform is resilient, meaning it doesn't rely on a single centralized server that could go down at any time.
-                                </p>
-                            </div>
+                        <section class="glass-panel rounded-3xl p-6 sm:p-8">
+                            <h3 class="text-[16px] font-retro uppercase text-indigo-400 tracking-[0.2em] mb-3">
+                                Where the games live</h3>
+                            <p class="text-[14px] text-slate-300 leading-relaxed mb-4">
+                                On IPFS, a peer-to-peer network where a file is addressed by its content instead of by
+                                the machine serving it. A cartridge stays reachable as long as any node keeps it.
+                            </p>
+                            <p class="text-[14px] text-slate-300 leading-relaxed">
+                                Browsers do not speak IPFS on their own, so the app reaches it through public gateways.
+                                It tries the one you picked first, and falls back to the others when that one is slow or
+                                missing the file. You can add your own gateway — including a node running on your
+                                machine — in the settings.
+                            </p>
                         </section>
 
-                        <!-- Emulator.js -->
-                        <section class="group glass-panel rounded-3xl p-6 sm:p-8 flex flex-col hover:-translate-y-1.5 hover:shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:border-amber-500/30 transition-all duration-300 relative overflow-hidden z-10 bg-black/40 backdrop-blur-xl">
-                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all"></div>
-                            <h3 class="text-[16px] font-retro uppercase text-amber-400 tracking-[0.2em] mb-4 flex items-center gap-3">
-                                <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
-                                Emulation
-                            </h3>
-                            <div class="space-y-4 text-[14px] text-slate-300 leading-relaxed relative z-10">
-                                <p>
-                                    To provide a seamless gaming experience, we integrate <strong class="text-white">EmulatorJS</strong>.
-                                </p>
-                                <p>
-                                    EmulatorJS is a fantastic open-source emulation engine that runs right in your browser via WebAssembly, supporting a wide range of classic consoles.
-                                </p>
-                            </div>
+                        <section class="glass-panel rounded-3xl p-6 sm:p-8">
+                            <h3 class="text-[16px] font-retro uppercase text-indigo-400 tracking-[0.2em] mb-3">
+                                What runs the games</h3>
+                            <p class="text-[14px] text-slate-300 leading-relaxed mb-4">
+                                <a href="https://emulatorjs.org" target="_blank" rel="noopener noreferrer"
+                                    class="text-indigo-400 hover:text-indigo-300 underline underline-offset-4 decoration-indigo-500/40 transition-colors">EmulatorJS</a>,
+                                which compiles console cores to WebAssembly and runs them in the page.
+                            </p>
+                            <p class="text-[14px] text-slate-300 leading-relaxed">
+                                The emulator runs on your machine, not on a remote one: there is no video stream and no
+                                input lag from the network. Nothing is installed, and there is no account to create.
+                            </p>
                         </section>
 
-                        <!-- Piracy Disclaimer -->
-                        <section class="group glass-panel rounded-3xl p-6 sm:p-8 flex flex-col bg-red-950/20 border-red-500/20 hover:border-red-500/40 hover:-translate-y-1.5 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] transition-all duration-300 relative overflow-hidden z-10 backdrop-blur-xl">
-                            <div class="absolute -right-4 -top-4 w-24 h-24 bg-red-500/10 rounded-full blur-xl group-hover:bg-red-500/20 transition-all"></div>
-                            <h3 class="text-[16px] font-retro uppercase text-red-400 tracking-[0.2em] mb-4 flex items-center gap-3">
-                                <svg class="w-6 h-6 text-red-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                Disclaimer
-                            </h3>
-                            <div class="space-y-4 text-[14px] text-red-200/80 leading-relaxed relative z-10">
-                                <p>
-                                    <strong class="text-red-300">Cartucho//IPFS does NOT provide, host, or distribute any ROMs, BIOS files, or copyrighted material.</strong>
-                                </p>
-                                <p>
-                                    This project is strictly a tool for playing games you already legally own. You are responsible for ensuring you have the legal right to use any files you load into the emulator.
-                                </p>
-                            </div>
+                        <section class="glass-panel rounded-3xl p-6 sm:p-8">
+                            <h3 class="text-[16px] font-retro uppercase text-indigo-400 tracking-[0.2em] mb-3">
+                                What stays on this device</h3>
+                            <p class="text-[14px] text-slate-300 leading-relaxed mb-4">
+                                Your library is a list of CIDs in this browser's storage. Saves and save states belong
+                                to the emulator, and downloaded ROMs sit in a local cache — keyed by CID, so it can
+                                never go stale, and a game you have opened once boots again with no network.
+                            </p>
+                            <p class="text-[14px] text-slate-300 leading-relaxed">
+                                Clearing this site's data takes the library with it. Export a backup from the settings
+                                if that would hurt.
+                            </p>
                         </section>
-                        
-                        <!-- Coming Soon: Node Cartucho//IPFS -->
-                        <section class="group glass-panel rounded-3xl p-6 sm:p-8 flex flex-col md:col-span-2 bg-gradient-to-br from-indigo-900/20 to-purple-900/10 border-indigo-500/20 hover:border-indigo-400/50 hover:-translate-y-1.5 hover:shadow-neon transition-all duration-300 relative overflow-hidden z-10 backdrop-blur-xl">
-                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==')] opacity-30"></div>
-                            <div class="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-700"></div>
-                            
-                            <!-- Coming Soon Badge -->
-                            <div class="absolute top-0 right-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-[10px] font-bold px-4 py-2 uppercase tracking-[0.2em] rounded-bl-2xl text-white shadow-lg overflow-hidden">
-                                <span class="relative z-10">Coming Soon</span>
-                                <div class="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none"></div>
-                            </div>
-                            
-                            <div class="relative z-10 flex flex-col md:flex-row gap-6 items-start md:items-center">
-                                <div class="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 shrink-0">
-                                    <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 class="text-[18px] font-retro uppercase text-indigo-300 tracking-[0.2em] mb-3">
-                                        Cartucho//IPFS Node
-                                    </h3>
-                                    <div class="space-y-2 text-[14px] text-slate-300 leading-relaxed max-w-3xl">
-                                        <p>
-                                            In the future, you will be able to run your own <strong class="text-white">Cartucho//IPFS Node</strong>.
-                                        </p>
-                                        <p>
-                                            This node will act as your personal gateway and storage server. You'll be able to store all your games securely on your own hardware, and stream or play them from anywhere in the world on any device, entirely decentralized and private.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+
+                        <section class="glass-panel rounded-3xl p-6 sm:p-8 lg:col-span-2">
+                            <h3 class="text-[16px] font-retro uppercase text-indigo-400 tracking-[0.2em] mb-3">
+                                Sharing a cartridge</h3>
+                            <p class="text-[14px] text-slate-300 leading-relaxed">
+                                The share button turns a game into a plain link (<span
+                                    class="font-mono text-slate-400">?cartucho=CID</span>) and a QR code for it. Opening
+                                the link loads the game straight away, on any device, with no install and no sign-up.
+                                The link keeps working for as long as one node on the network still holds the files.
+                            </p>
+                        </section>
+
+                        <!-- Vermelho aqui é o mesmo vermelho de excluir cartucho: no app ele
+                             quer dizer "isto é sério", e é o único lugar do About que merece. -->
+                        <section class="glass-panel rounded-3xl p-6 sm:p-8 lg:col-span-2 border-red-500/20 bg-red-950/10">
+                            <h3 class="text-[16px] font-retro uppercase text-red-400 tracking-[0.2em] mb-3">
+                                Legal</h3>
+                            <p class="text-[14px] text-slate-300 leading-relaxed mb-3">
+                                Cartucho//IPFS does not host, provide or distribute ROMs, BIOS files or any copyrighted
+                                material. It is a player and a library: the files come from IPFS, put there by whoever
+                                put them there.
+                            </p>
+                            <p class="text-[14px] text-slate-300 leading-relaxed">
+                                Use it with games you have the right to use. That call is yours, and so is the
+                                responsibility for it.
+                            </p>
+                        </section>
+
+                        <section class="glass-panel rounded-3xl p-6 sm:p-8 lg:col-span-2">
+                            <h3 class="text-[16px] font-retro uppercase text-slate-400 tracking-[0.2em] mb-3">
+                                Next: your own node</h3>
+                            <p class="text-[14px] text-slate-300 leading-relaxed">
+                                Public gateways are the weak spot: they rate-limit, they go down, and they decide what
+                                they serve. A Cartucho//IPFS node would be your own gateway and your own storage —
+                                your games on your hardware, reachable from anywhere, with the public network as a
+                                fallback rather than a dependency. It does not exist yet.
+                            </p>
                         </section>
                     </div>
                 </div>

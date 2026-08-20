@@ -30,6 +30,9 @@ import { gamepadModule } from './gamepad.js';
 import { loadQrGenerator, loadQrScanner } from './vendor.js';
 import { aplicarMetaDoJogo } from './page-meta.js';
 
+/** Páginas que existem fora do menu derivado do acervo. */
+const PAGINAS_FIXAS = ['Settings', 'About'];
+
 /** Só o host, para dizer de onde o cartucho veio sem despejar a URL inteira. */
 function hostOf(url) {
     try {
@@ -158,8 +161,10 @@ export function cartuchoApp() {
             const params = new URLSearchParams(window.location.search);
 
             // ?page= é como stopGame() devolve o usuário para a aba certa após o reload.
+            // As páginas fixas precisam estar listadas: `menuItems` só tem Home e os consoles
+            // do acervo, então sem isto clicar em About durante o jogo caía na Home.
             const page = params.get('page');
-            if (page && (page === 'Settings' || this.menuItems.some(item => item.name === page))) {
+            if (page && (PAGINAS_FIXAS.includes(page) || this.menuItems.some(item => item.name === page))) {
                 this.activePage = page;
                 if (page === 'Settings') this.refreshCacheStats();
             }

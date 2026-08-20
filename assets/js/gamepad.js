@@ -241,8 +241,12 @@ export function gamepadModule() {
             const elements = openModal
                 ? Array.from(document.querySelectorAll(`.fixed[x-show="${openModal}"] .nav-item`))
                 // Sem modal: só a navegação lateral e o conteúdo principal.
+                // `aside` entra junto: Add_Cartucho, Settings e About ficam no rodapé da
+                // barra, FORA do <nav> rolável (de propósito — dentro dele sumiam quando a
+                // lista de consoles crescia), e por isso nenhum dos três era alcançável pelo
+                // controle. Quem joga sem mouse não tinha como importar nem abrir ajustes.
                 : Array.from(document.querySelectorAll('.nav-item'))
-                    .filter(el => el.closest('nav') || el.closest('main'));
+                    .filter(el => el.closest('nav') || el.closest('main') || el.closest('aside'));
 
             loop.focoCache = elements;
             if (loop.focoIndex >= elements.length) loop.focoIndex = -1;
