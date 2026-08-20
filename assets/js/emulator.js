@@ -21,24 +21,63 @@ export function gameIdNumerico(cid) {
     return Math.abs(hash | 0) || 1;
 }
 
+/** Literal IPv6 como o `URL` devolve em `hostname`: entre colchetes. */
+function ehIPv6(hostname) {
+    return hostname.startsWith('[') && hostname.endsWith(']');
+}
+
+/** IPv4 numérico puro — não é hostname, então não ganha `https:` por padrão. */
+function ehIPv4(hostname) {
+    return /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
+}
+
 /**
- * Arruma o endereço do servidor de NetPlay: aceita "netplay.exemplo.com" ou a URL inteira.
+ * Arruma o endereço do servidor de NetPlay: aceita "netplay.exemplo.com", um IP com porta
+ * ou a URL inteira.
+ *
+ * Duas armadilhas já pagas aqui:
+ *
+ * 1. **Literal IPv6 não tem ponto.** A validação era `hostname.includes('.')`, então
+ *    `[2804:14d:1::1]:3000` era recusado como endereço inválido MESMO com esquema
+ *    explícito — e o netplay por IPv6, que é o caminho sem NAT nenhum, simplesmente não
+ *    existia para o usuário.
+ * 2. **`https:` como padrão só serve para hostname.** Endereço sem esquema virava
+ *    `https://`, e não existe certificado para IP: `192.168.1.10:3000` (LAN) e
+ *    `187.1.2.3:3000` (porta aberta por UPnP) ficavam sem conectar, sem explicação. IP
+ *    literal, v4 ou v6, assume `http:`; hostname continua assumindo `https:`.
+ *
  * @returns {{url: string}|{error: string}}
  */
 export function parseNetplayServer(texto) {
-    const cru = (texto || '').trim();
+    let cru = (texto || '').trim();
     if (!cru) return { url: '' }; // vazio é uma escolha válida: netplay desligado
 
-    const comEsquema = /^https?:\/\//i.test(cru) ? cru : `https://${cru}`;
+    const temEsquema = /^https?:\/\//i.test(cru);
+    // IPv6 digitado sem colchetes ("2804:14d:1::1"): o `URL` leria o último grupo como
+    // porta. Colchetes são obrigatórios para informar porta, então aqui não há porta a
+    // preservar — é só embrulhar. Dois-pontos únicos ficam de fora: é "host:porta".
+    if (!temEsquema && !cru.startsWith('[') && (cru.match(/:/g) || []).length > 1) {
+        cru = `[${cru}]`;
+    }
+
     let url;
     try {
-        url = new URL(comEsquema);
+        // O esquema real depende do host, que só existe depois do parse. `http:` aqui é
+        // andaime: o valor final é decidido logo abaixo.
+        url = new URL(temEsquema ? cru : `http://${cru}`);
     } catch (e) {
         return { error: 'Invalid address.' };
     }
-    if (!url.hostname.includes('.') && url.hostname !== 'localhost') {
+
+    const host = url.hostname;
+    const ehIP = ehIPv6(host) || ehIPv4(host);
+    if (!ehIP && !host.includes('.') && host !== 'localhost') {
         return { error: 'Invalid address.' };
     }
+    if (!temEsquema && !ehIP && host !== 'localhost') {
+        url.protocol = 'https:';
+    }
+
     return { url: url.href.endsWith('/') ? url.href : `${url.href}/` };
 }
 
@@ -96,9 +135,16 @@ export function isEmulatorLoaded() {
 export function configureEmulator(game, romUrl, coverUrl, opts = {}) {
     window.EJS_player = '#game-container';
     window.EJS_gameUrl = romUrl;
-    window.EJS_gameID = gameIdNumerico(game.cartucho);
+    // Hash do CID da ROM, não do manifesto: o EmulatorJS lista salas de netplay por
+    // gameID, e o que precisa ser idêntico entre dois jogadores é o BINÁRIO. Como CID é
+    // hash de conteúdo, a sala passa a ser o arquivo — dois cartuchos com metadados
+    // diferentes apontando para a mesma ROM são o mesmo jogo, e some a dessincronização
+    // clássica de "mesma sala, ROM ligeiramente diferente". Vale também para os saves,
+    // que o gameID separa: cai no lugar certo pelo mesmo motivo.
+    window.EJS_gameID = gameIdNumerico(game.rom);
     window.EJS_gameName = game.name;
     window.EJS_backgroundImage = coverUrl;
+    window.EJS_biosUrl = opts.biosUrl || '';
     window.EJS_core = game.system || 'nes';
     window.EJS_language = pickLanguage();
     window.EJS_disableAutoLang = true;

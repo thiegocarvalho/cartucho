@@ -323,7 +323,8 @@ export function cartuchoApp() {
                 syncUrlToGame(cid);
                 aplicarMetaDoJogo(game, this.getMediaUrl(game.cover || game.screenshot));
                 configureEmulator(game, romUrl, this.getMediaUrl(game.cover), {
-                    netplayServer: this.netplayServer
+                    netplayServer: this.netplayServer,
+                    biosUrl: this.getMediaUrl(game.bios)
                 });
 
                 // Deixa o Alpine pintar o #game-container antes do emulador procurar por ele.
