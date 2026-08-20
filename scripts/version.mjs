@@ -54,6 +54,12 @@ html = html.replace(
 // CSS continua com a versão na própria URL (não passa pelo import map).
 html = html.replace(/(href="assets\/css\/[\w.-]+\.css)"/g, `$1?v=${versao}"`);
 
+// O ponto de entrada também: o import map resolve os especificadores de `import`, não o
+// `src` de um <script>, então app.js era o ÚNICO módulo que ainda podia vir velho do cache.
+// Sintoma: "does not provide an export named X" (app.js antigo + módulo novo), o
+// Alpine.data nunca é registrado e a página inteira fica em branco com "X is not defined".
+html = html.replace(/(<script type="module" src="assets\/js\/[\w.-]+\.js)"/g, `$1?v=${versao}"`);
+
 // O import map precisa vir antes de qualquer <script type="module">.
 const ancora = html.indexOf('    <script type="module"');
 if (ancora === -1) throw new Error('não achei o <script type="module"> do app no index.html');

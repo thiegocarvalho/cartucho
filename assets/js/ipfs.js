@@ -1,6 +1,6 @@
 // Tudo que fala com a rede IPFS: parsing de CID, escolha de gateway e fetch de manifesto.
 import {
-    DEFAULT_GATEWAY, LOCAL_GATEWAY, GATEWAY_RACE_TIMEOUT,
+    DEFAULT_GATEWAY, LOCAL_GATEWAY, GATEWAY_RACE_TIMEOUT, GATEWAY_PREFERIDO_TIMEOUT,
     GATEWAY_TEST_TIMEOUT, GATEWAY_TEST_CID
 } from './config.js';
 
@@ -10,31 +10,60 @@ const CID_EXACT = new RegExp(`^(${CID_PATTERN})$`);
 const CID_LOOSE = new RegExp(`(${CID_PATTERN})`);
 
 /**
+ * Põe o CID na forma canônica do app.
+ *
+ * O prefixo do multibase diz a codificação, e duas delas são MAIÚSCULAS do mesmo conteúdo:
+ * `B` é base32upper e `F` é base16upper. Baixar por elas funciona, mas o CID é a
+ * identidade do cartucho aqui — o mesmo jogo lido em maiúsculas viraria uma segunda
+ * entrada na biblioteca, com o `findGame` sem enxergar a duplicata e o link compartilhado
+ * saindo diferente do de todo mundo.
+ *
+ * Isso não é hipótese: o modo alfanumérico do QR só carrega maiúsculas, e é comum um
+ * gerador usá-lo por ser mais compacto — daí o QR chegar com a URL inteira em caixa alta.
+ *
+ * Só estas duas descem para minúsculas. `Qm...` (base58btc) e `z...` são sensíveis a
+ * caixa: lá, trocar a caixa muda o conteúdo e destrói o CID.
+ */
+function canonizarCID(cid) {
+    return (cid.startsWith('B') || cid.startsWith('F')) ? cid.toLowerCase() : cid;
+}
+
+/**
  * Extrai um CID de uma string solta, validando o formato.
- * @returns {string|null} o CID, ou null se não houver um válido.
+ * @returns {string|null} o CID canônico, ou null se não houver um válido.
  */
 export function sanitizeCID(text) {
     if (!text) return null;
     const match = text.match(CID_LOOSE);
-    return match && CID_EXACT.test(match[0]) ? match[0] : null;
+    return match && CID_EXACT.test(match[0]) ? canonizarCID(match[0]) : null;
 }
 
 /**
- * Aceita CID cru, link de compartilhamento (?cartucho=CID) ou texto de QR code.
+ * Reduz a CID qualquer coisa que aponte para um cartucho: o CID cru, o link de
+ * compartilhamento (`?cartucho=CID`), a URL de um gateway (`/ipfs/CID` ou
+ * `CID.ipfs.gateway`), `ipfs://CID`, ou o texto lido de um QR code — inclusive quando o
+ * link vem no meio de uma frase.
+ *
+ * É o que faz o campo de import aceitar um link colado e mostrar só o CID: quem
+ * compartilha manda uma URL, e é ela que a pessoa tem na mão para colar.
  * @returns {string|null}
  */
 export function extractCID(text) {
     if (!text) return null;
 
     // Busca manual pelo parâmetro primeiro: funciona mesmo em URLs malformadas (file://).
-    if (text.includes('cartucho=')) {
-        const match = text.match(/[?&]cartucho=([^&?#\s"']+)/);
+    // Sem sensibilidade a caixa por causa do QR em maiúsculas — lá o link chega inteiro
+    // como `?CARTUCHO=`, e a busca exata não achava nada.
+    if (/cartucho=/i.test(text)) {
+        const match = text.match(/[?&]cartucho=([^&?#\s"']+)/i);
         if (match && match[1]) return sanitizeCID(match[1]);
     }
 
     try {
-        const cartucho = new URL(text).searchParams.get('cartucho');
-        if (cartucho) return sanitizeCID(cartucho);
+        const params = new URL(text).searchParams;
+        for (const [chave, valor] of params) {
+            if (chave.toLowerCase() === 'cartucho' && valor) return sanitizeCID(valor);
+        }
     } catch (e) {
         // Não era URL; cai no parsing direto.
     }
@@ -61,17 +90,17 @@ export function normalizeGateway(gateway) {
  */
 export function parseGatewayInput(texto) {
     const cru = (texto || '').trim();
-    if (!cru) return { error: 'Digite o endereço do gateway.' };
+    if (!cru) return { error: 'Type the gateway address.' };
 
     const comEsquema = /^https?:\/\//i.test(cru) ? cru : `https://${cru}`;
     let url;
     try {
         url = new URL(comEsquema);
     } catch (e) {
-        return { error: 'Endereço inválido.' };
+        return { error: 'Invalid address.' };
     }
     if (!url.hostname.includes('.') && url.hostname !== 'localhost') {
-        return { error: 'Endereço inválido.' };
+        return { error: 'Invalid address.' };
     }
 
     // O caminho pode vir vazio, como /ipfs ou como /ipfs/ — tudo vira /ipfs/.
@@ -91,35 +120,39 @@ export async function probeGateway(gateway) {
         const resp = await headWithTimeout(`${gateway}${GATEWAY_TEST_CID}`, GATEWAY_TEST_TIMEOUT);
         if (resp.ok) return { ok: true, ms: Date.now() - inicio };
         if (resp.status === 403) return { ok: true, ms: Date.now() - inicio, restrito: true };
-        if (resp.status === 429) return { ok: false, motivo: 'o gateway está recusando por limite de uso' };
-        return { ok: false, motivo: `o gateway respondeu ${resp.status}` };
+        if (resp.status === 429) return { ok: false, motivo: 'the gateway is refusing due to rate limits' };
+        return { ok: false, motivo: `the gateway answered ${resp.status}` };
     } catch (e) {
-        return { ok: false, motivo: 'sem resposta, ou o gateway não permite acesso pelo navegador (CORS)' };
+        return { ok: false, motivo: 'no answer, or the gateway does not allow browser access (CORS)' };
     }
 }
 
 /**
  * Busca o manifesto JSON de um Cartucho.
+ *
+ * Com prazo (o mesmo da corrida): sem ele, gateway que aceita a conexão e não responde
+ * deixava a busca pendurada para sempre — e a tela de import ficava no spinner
+ * indefinidamente, sem erro e sem como sair. Acontece com CID que ninguém tem.
  * @returns {Promise<{data: object}|{error: 'unreachable'|'not-json'}>}
  */
 export async function fetchCartucho(gateway, cid) {
-    let response;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), GATEWAY_RACE_TIMEOUT);
     try {
-        response = await fetch(`${gateway}${cid}`);
-    } catch (e) {
-        return { error: 'unreachable' };
-    }
-    if (!response.ok) return { error: 'unreachable' };
+        const response = await fetch(`${gateway}${cid}`, { signal: controller.signal });
+        if (!response.ok) return { error: 'unreachable' };
 
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-        return { error: 'not-json' };
-    }
-
-    try {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            return { error: 'not-json' };
+        }
         return { data: await response.json() };
     } catch (e) {
-        return { error: 'not-json' };
+        // Prazo estourado e falha de rede dão no mesmo para quem espera: o gateway não
+        // entregou. Só corpo ilegível é 'not-json'.
+        return { error: e instanceof SyntaxError ? 'not-json' : 'unreachable' };
+    } finally {
+        clearTimeout(timer);
     }
 }
 
@@ -130,15 +163,21 @@ export async function fetchCartucho(gateway, cid) {
  * @returns {Promise<{data: object, gateway: string}|{error: 'unreachable'|'not-json'}>}
  */
 export async function fetchCartuchoAnywhere(preferred, gateways, cid) {
-    const first = await fetchCartucho(preferred, cid);
+    // O preferido passa pelo mesmo filtro dos outros: gateway http: escolhido por quem roda
+    // um nó local é bloqueado por mixed content na página https, e tentá-lo assim mesmo só
+    // rendia um erro no console a cada busca de manifesto.
+    const [usavel] = usableGateways([preferred].filter(Boolean));
+    const first = usavel
+        ? await fetchCartucho(usavel, cid)
+        : { error: 'unreachable' };
     // 'not-json' significa que o CID foi encontrado e não é um Cartucho: nem tenta os outros.
-    if (!first.error) return { ...first, gateway: preferred };
+    if (!first.error) return { ...first, gateway: usavel };
     if (first.error === 'not-json') return first;
 
-    const others = usableGateways(gateways).filter(g => g !== preferred);
+    const others = usableGateways(gateways).filter(g => g !== usavel);
     if (others.length === 0) return first;
 
-    console.warn(`Gateway ${preferred} não respondeu; tentando os demais.`);
+    console.warn(`Gateway ${usavel || preferred} indisponível; tentando os demais.`);
     try {
         return await Promise.any(others.map(async (gateway) => {
             const result = await fetchCartucho(gateway, cid);
@@ -172,24 +211,43 @@ async function headWithTimeout(url, timeout, signal) {
 }
 
 /**
- * Corre um HEAD contra os gateways e devolve o primeiro que responder.
- * @param {{preferred?: string, fallback?: string}} opts gateway do usuário (entra na corrida)
- *        e último gateway sabidamente vivo (usado se a corrida inteira falhar).
+ * Escolhe o gateway que vai servir a ROM.
+ *
+ * O gateway do usuário tem a PRIMEIRA CHANCE, sozinho. Antes ele apenas entrava numa
+ * corrida com todos os outros, decidida por latência — então quem escolheu um gateway
+ * (um nó próprio, por exemplo) quase nunca era atendido por ele, e a configuração da tela
+ * de ajustes valia só para o manifesto e as capas. A chance tem prazo curto
+ * (`GATEWAY_PREFERIDO_TIMEOUT`) para que respeitar a escolha não custe caro quando esse
+ * gateway está fora do ar: passou do prazo, os outros correm normalmente.
+ *
+ * @param {{preferred?: string, fallback?: string}} opts gateway escolhido pelo usuário e
+ *        último gateway sabidamente vivo (usado se tudo falhar).
  * @returns {Promise<{gateway: string, label: string, fallback: boolean}>}
  */
 export async function resolveFastestGateway(cid, gateways, opts = {}) {
     const { preferred, fallback } = opts;
     const candidates = usableGateways([...new Set([preferred, ...gateways].filter(Boolean))]);
-    const raceController = new AbortController();
 
-    const probe = async (baseUrl) => {
-        const resp = await headWithTimeout(`${baseUrl}${cid}`, GATEWAY_RACE_TIMEOUT, raceController.signal);
+    const probe = async (baseUrl, timeout, signal) => {
+        const resp = await headWithTimeout(`${baseUrl}${cid}`, timeout, signal);
         if (!resp.ok) throw new Error(`Gateway respondeu ${resp.status}`);
         return baseUrl;
     };
 
+    if (preferred && candidates.includes(preferred)) {
+        try {
+            await probe(preferred, GATEWAY_PREFERIDO_TIMEOUT);
+            return { gateway: preferred, label: new URL(preferred).hostname.toUpperCase(), fallback: false };
+        } catch (e) {
+            console.warn(`Gateway escolhido (${preferred}) não respondeu a tempo; correndo os demais.`);
+        }
+    }
+
+    const raceController = new AbortController();
+    const outros = candidates.filter(g => g !== preferred);
     try {
-        const gateway = await Promise.any(candidates.map(probe));
+        if (outros.length === 0) throw new Error('nenhum outro gateway disponível');
+        const gateway = await Promise.any(outros.map(g => probe(g, GATEWAY_RACE_TIMEOUT, raceController.signal)));
         raceController.abort(); // cancela as requisições que ainda estão em voo
         return { gateway, label: new URL(gateway).hostname.toUpperCase(), fallback: false };
     } catch (e) {
@@ -231,7 +289,7 @@ export async function measureGateways(gateways, onResult) {
     const problema = checarCidDeTeste(GATEWAY_TEST_CID);
     if (problema) {
         console.error(`GATEWAY_TEST_CID inválido (${problema}): "${GATEWAY_TEST_CID}". Confira config.js.`);
-        return Object.fromEntries(gateways.map(g => [g, 'CID de teste inválido']));
+        return Object.fromEntries(gateways.map(g => [g, 'invalid test CID']));
     }
 
     // Em paralelo: sequencial custava até GATEWAY_TEST_TIMEOUT por gateway (a lista
@@ -246,12 +304,12 @@ export async function measureGateways(gateways, onResult) {
             const ms = Date.now() - inicio;
             if (resp.ok) status = `${ms}ms`;
             // 403 = gateway dedicado, vivo mas só serve o conteúdo da própria conta.
-            else if (resp.status === 403) status = `${ms}ms (restrito)`;
+            else if (resp.status === 403) status = `${ms}ms (restricted)`;
             // 429 = vivo, mas recusando por limite de uso — não é gateway ruim.
-            else if (resp.status === 429) status = 'limite atingido';
+            else if (resp.status === 429) status = 'rate limited';
             else status = `HTTP ${resp.status}`;
         } catch (e) {
-            status = 'sem resposta';
+            status = 'no answer';
         }
         if (onResult) onResult(gateway, status);
         return [gateway, status];

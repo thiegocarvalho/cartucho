@@ -56,7 +56,8 @@ export const STORAGE_KEYS = {
     gateway: 'cartucho_gateway',
     lastGateway: 'cartucho_last_gateway',
     customGateways: 'cartucho_custom_gateways',
-    cacheLimit: 'cartucho_cache_limit'
+    cacheLimit: 'cartucho_cache_limit',
+    netplay: 'cartucho_netplay_server'
 };
 
 /** Cache de ROMs (Cache API). Só sobe a versão se o formato do que é guardado mudar. */
@@ -79,8 +80,31 @@ export const CACHE_MAX_FALLBACK = 1024 * MB;
 /** Desligado por padrão: guardar megabytes no aparelho de alguém se pede, não se assume. */
 export const CACHE_LIMITE_PADRAO = 0;
 
+/**
+ * Espera pelo primeiro byte da ROM (ms), generosa de propósito: quando o gateway ainda
+ * não tem o conteúdo, ele precisa achar os provedores na rede antes de responder, e uma
+ * busca fria passando de 30s é normal no IPFS. Medido aqui: 35s até os cabeçalhos num
+ * gateway sob limite de uso. Prazo curto nesta fase é falso positivo, não proteção.
+ */
+export const ROM_FIRST_BYTE_TIMEOUT = 60000;
+/**
+ * Silêncio tolerado ENTRE pedaços já no meio do corpo (ms). Não é o tempo total: um
+ * arquivo de 40 MB numa linha ruim leva minutos legitimamente. Aqui o gateway já provou
+ * que tem o conteúdo e está enviando; parar no meio é defeito, e sem prazo o
+ * `reader.read()` nunca resolve e a tela de boot fica presa em DOWNLOADING_ROM.
+ */
+export const ROM_STALL_TIMEOUT = 20000;
+
 /** Timeout de cada HEAD na corrida de gateways (ms). */
 export const GATEWAY_RACE_TIMEOUT = 6000;
+/**
+ * Prazo da primeira chance, dada só ao gateway escolhido pelo usuário (ms). Igual ao da
+ * corrida de propósito: com um valor menor (2,5s foi tentado) o pinata, que responde em
+ * ~3,6s, perdia a própria vez — quem o escolhia era sempre atendido por outro, e a
+ * configuração não valia nada. Gateway fora do ar quase sempre falha na hora (DNS ou
+ * conexão recusada), então o prazo cheio raramente é gasto de verdade.
+ */
+export const GATEWAY_PREFERIDO_TIMEOUT = GATEWAY_RACE_TIMEOUT;
 /**
  * Timeout do teste manual de gateways (ms). Igual ao da corrida de propósito: com um
  * valor menor, gateway que o app usaria sem problema aparecia como "Timeout/Error".
@@ -97,11 +121,57 @@ export const GATEWAY_TEST_TIMEOUT = GATEWAY_RACE_TIMEOUT;
  */
 export const GATEWAY_TEST_CID = 'bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m';
 
+/**
+ * Quanto tempo a busca do manifesto pode ficar só com o spinner antes de o modal
+ * explicar a demora. Menor que o timeout de um gateway de propósito: a espera longa
+ * acontece justamente quando o preferido não responde e a corrida vai para os outros.
+ */
+export const IMPORT_AVISO_DEMORA = 3500;
+
+/** Quanto tempo o status da câmera fica em "não é um Cartucho" antes de voltar a procurar. */
+export const SCAN_AVISO_DURACAO = 2500;
+
+/**
+ * QR de compartilhamento. Cada valor aqui saiu de teste de decodificação, não de gosto:
+ * o QR era gerado com `colorLight: 'transparent'` e **não decodificava nem numa captura
+ * digital perfeita** — sem preenchimento claro opaco, as bordas dos módulos se acumulam e
+ * sujam o código (27.722 pixels escuros contra 19.468 do mesmo código com fundo branco).
+ *
+ * `M` e não `H`: sem logo sobreposto não há motivo para 30% de redundância, e o nível
+ * baixo rende menos módulos (41 contra 57) — módulo maior é o que decide leitura de longe,
+ * mais que correção de erro. Medido: ambos aguentam 140px com desfoque; M chega lá com
+ * módulos 1,4× maiores.
+ *
+ * A escala inteira importa: o qrcodejs arredonda a largura de cada módulo, e tamanho que
+ * não é múltiplo do número de módulos gera colunas de larguras diferentes — foi assim que
+ * o nível Q a 400px falhou enquanto o mesmo Q a 512px passou.
+ */
+export const QR_NIVEL = 'M';
+/**
+ * Pixels de tela por módulo. O lado exibido é sempre `módulos × escala`, e o canvas é
+ * desenhado no dobro disso — a redução vira 2:1 exata, sem aliasing, e em tela retina cai
+ * 1:1 em pixel físico. Tamanho que não é múltiplo do número de módulos produz colunas de
+ * larguras diferentes, e aí o leitor erra: com o canvas em 410px reduzido para 140, o
+ * código só decodificava quando havia desfoque suavizando as bordas.
+ */
+export const QR_ESCALA = 5;
+/** Escala em tela baixa (o modal comprime tudo abaixo de 700px de altura). */
+export const QR_ESCALA_COMPACTA = 3;
+/** Zona silenciosa exigida pela norma, em módulos. Menos que isso e leitor nenhum acha o código. */
+export const QR_ZONA_SILENCIOSA = 4;
+
 /** Bibliotecas carregadas sob demanda — ver vendor.js. */
 export const QRCODE_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
 export const HTML5_QRCODE_URL = 'https://unpkg.com/html5-qrcode';
 
-export const EJS_DATA_PATH = 'https://cdn.emulatorjs.org/latest/data/';
+/**
+ * `stable`, não `latest`: a documentação do EmulatorJS avisa que latest "occasionally be
+ * broken" porque junta código novo com cores estáveis. Foi exatamente o que quebrou o save
+ * state aqui — `gameManager.getState()` estourava com
+ * "this.Module.EmulatorJSGetState is not a function", porque o loader chamava uma função
+ * que o core servido não expõe.
+ */
+export const EJS_DATA_PATH = 'https://cdn.emulatorjs.org/stable/data/';
 export const EJS_LOADER_URL = `${EJS_DATA_PATH}loader.js`;
 export const EJS_LOADER_ID = 'ejs-loader';
 /** Idiomas que o CDN do EmulatorJS realmente serve. */

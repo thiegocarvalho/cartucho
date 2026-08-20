@@ -4,7 +4,8 @@
 // Isso torna o cache permanente trivialmente correto — não existe invalidação a fazer,
 // e evita rebaixar megabytes de um gateway público a cada vez que o jogo abre.
 import {
-    ROM_CACHE_NAME, ROM_CACHE_MAX_BYTES, STORAGE_KEYS, CACHE_LIMITE_PADRAO
+    ROM_CACHE_NAME, ROM_CACHE_MAX_BYTES, STORAGE_KEYS, CACHE_LIMITE_PADRAO,
+    ROM_STALL_TIMEOUT, ROM_FIRST_BYTE_TIMEOUT
 } from './config.js';
 
 /** A chave é o CID, não a URL: a mesma ROM vinda de outro gateway reaproveita o cache. */
@@ -35,7 +36,14 @@ export function loadCacheLimit() {
 }
 
 export function saveCacheLimit(bytes) {
-    localStorage.setItem(STORAGE_KEYS.cacheLimit, String(bytes));
+    // Mesma tolerância das outras gravações: janela privada do Safari lança aqui.
+    try {
+        localStorage.setItem(STORAGE_KEYS.cacheLimit, String(bytes));
+        return true;
+    } catch (e) {
+        console.error('Não foi possível gravar o limite de cache', e);
+        return false;
+    }
 }
 
 /** Entradas do cache, da mais antiga para a mais recente. */
@@ -125,21 +133,57 @@ export async function requestPersistence() {
 }
 
 /**
+ * Corre uma promessa contra o relógio, sem cancelá-la.
+ * @returns {Promise<any>} rejeita com Error('stalled') se o prazo vencer primeiro
+ */
+function comPrazo(promessa, ms) {
+    let timer;
+    const relogio = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('stalled')), ms);
+    });
+    return Promise.race([promessa, relogio]).finally(() => clearTimeout(timer));
+}
+
+/**
  * Baixa a ROM relatando progresso e guarda no cache.
+ *
+ * Dois prazos, porque as duas fases são muito diferentes:
+ * - até os cabeçalhos, `ROM_FIRST_BYTE_TIMEOUT` (largo): busca fria no IPFS demora, e o
+ *   gateway pode estar procurando os blocos na rede — medi 35s num caso real;
+ * - entre pedaços do corpo, `ROM_STALL_TIMEOUT` (curto): aqui o conteúdo já está vindo, e
+ *   parar no meio é defeito.
+ *
+ * Sem isso, o HEAD da corrida provava que o gateway responde, não que ele termina de
+ * enviar: com o corpo emudecendo, `reader.read()` nunca resolvia e a tela de boot ficava
+ * presa em DOWNLOADING_ROM para sempre. Estourado o prazo, isto lança e quem chama cai na
+ * URL crua do gateway, deixando o EmulatorJS tentar por conta própria.
+ *
+ * Nenhum dos dois limita o tempo TOTAL: um arquivo grande numa linha lenta demora muito de
+ * forma perfeitamente saudável.
+ *
  * @param {string} url URL completa no gateway
  * @param {string} cid CID da ROM (chave do cache)
  * @param {(carregado: number, total: number) => void} [onProgress] total 0 = desconhecido
  * @returns {Promise<Blob>}
  */
 export async function fetchRomWithProgress(url, cid, onProgress) {
-    const resp = await fetch(url);
+    // O AbortController cobre a fase de cabeçalhos e libera a conexão quando desistimos.
+    const controller = new AbortController();
+    const resp = await comPrazo(fetch(url, { signal: controller.signal }), ROM_FIRST_BYTE_TIMEOUT)
+        .catch((e) => {
+            controller.abort();
+            throw e;
+        });
     if (!resp.ok) throw new Error(`gateway respondeu ${resp.status}`);
 
     const total = Number(resp.headers.get('content-length')) || 0;
 
     // Sem streaming legível, cai para o caminho simples — só perde a barra de progresso.
     if (!resp.body || !resp.body.getReader) {
-        const blob = await resp.blob();
+        const blob = await comPrazo(resp.blob(), ROM_FIRST_BYTE_TIMEOUT).catch((e) => {
+            controller.abort();
+            throw e;
+        });
         await putRom(cid, blob);
         return blob;
     }
@@ -148,12 +192,18 @@ export async function fetchRomWithProgress(url, cid, onProgress) {
     const pedacos = [];
     let carregado = 0;
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        pedacos.push(value);
-        carregado += value.length;
-        if (onProgress) onProgress(carregado, total);
+    try {
+        while (true) {
+            const { done, value } = await comPrazo(reader.read(), ROM_STALL_TIMEOUT);
+            if (done) break;
+            pedacos.push(value);
+            carregado += value.length;
+            if (onProgress) onProgress(carregado, total);
+        }
+    } catch (e) {
+        // Sem o abort a conexão morta continuaria ocupando uma das seis por origem.
+        controller.abort();
+        throw e;
     }
 
     const blob = new Blob(pedacos, { type: 'application/octet-stream' });

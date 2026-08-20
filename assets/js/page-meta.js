@@ -30,7 +30,7 @@ export function aplicarMetaDoJogo(jogo, capaUrl) {
     definirMeta('meta[property="og:title"]', titulo);
     definirMeta('meta[name="twitter:title"]', titulo);
 
-    const descricao = `Jogue ${jogo.name}${jogo.system ? ` (${jogo.system})` : ''} direto do IPFS, sem instalar nada.`;
+    const descricao = `Play ${jogo.name}${jogo.system ? ` (${jogo.system})` : ''} straight from IPFS, with nothing to install.`;
     definirMeta('meta[property="og:description"]', descricao);
     definirMeta('meta[name="twitter:description"]', descricao);
     definirMeta('meta[name="description"]', descricao);
@@ -42,5 +42,5 @@ export function aplicarMetaDoJogo(jogo, capaUrl) {
     }
 
     definirMeta('meta[property="og:url"]', window.location.href);
-    definirMeta('meta[property="og:image:alt"]', `Capa de ${jogo.name}`);
+    definirMeta('meta[property="og:image:alt"]', `${jogo.name} cover art`);
 }

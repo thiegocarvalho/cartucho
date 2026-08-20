@@ -7,8 +7,46 @@ import {
     EJS_DATA_PATH, EJS_LOADER_URL, EJS_LOADER_ID, EJS_LANGUAGES, COLORS
 } from './config.js';
 
-/** Defaults do EmulatorJS. Precisam ser globais reais em `window` — o loader lê de lá. */
-export function applyEmulatorDefaults() {
+/**
+ * O EmulatorJS exige `EJS_gameID` numérico: é o que separa saves, save states e cache
+ * entre jogos, e o netplay não sobe sem ele. O identificador daqui é um CID (texto), então
+ * vira número por hash — mesmo CID, mesmo número, sempre.
+ */
+export function gameIdNumerico(cid) {
+    let hash = 2166136261; // FNV-1a de 32 bits
+    for (let i = 0; i < (cid || '').length; i++) {
+        hash ^= cid.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return Math.abs(hash | 0) || 1;
+}
+
+/**
+ * Arruma o endereço do servidor de NetPlay: aceita "netplay.exemplo.com" ou a URL inteira.
+ * @returns {{url: string}|{error: string}}
+ */
+export function parseNetplayServer(texto) {
+    const cru = (texto || '').trim();
+    if (!cru) return { url: '' }; // vazio é uma escolha válida: netplay desligado
+
+    const comEsquema = /^https?:\/\//i.test(cru) ? cru : `https://${cru}`;
+    let url;
+    try {
+        url = new URL(comEsquema);
+    } catch (e) {
+        return { error: 'Invalid address.' };
+    }
+    if (!url.hostname.includes('.') && url.hostname !== 'localhost') {
+        return { error: 'Invalid address.' };
+    }
+    return { url: url.href.endsWith('/') ? url.href : `${url.href}/` };
+}
+
+/**
+ * Defaults do EmulatorJS. Precisam ser globais reais em `window` — o loader lê de lá.
+ * @param {{netplayServer?: string}} [opts]
+ */
+export function applyEmulatorDefaults(opts = {}) {
     window.EJS_player = '#game-container';
     window.EJS_core = 'nes';
     window.EJS_gameUrl = '';
@@ -23,9 +61,13 @@ export function applyEmulatorDefaults() {
     window.EJS_backgroundColor = COLORS.background;
     window.EJS_color = COLORS.primary;
     window.EJS_startOnLoaded = true;
-    window.EJS_saveStateLocation = 'browser';
+    window.EJS_netplayServer = opts.netplayServer || '';
+    // 'download' e não 'browser': o save state guardado no navegador é apagado junto com
+    // os dados do site, e o usuário nunca soube que tinha algo a perder. Baixando, o
+    // arquivo é dele. (`EJS_saveStateLocation`, que estava aqui, não existe na API —
+    // quem manda é esta chave de `EJS_defaultOptions`, com valores 'download'|'browser'.)
     window.EJS_defaultOptions = {
-        'save-state-location': 'browser',
+        'save-state-location': 'download',
         'save-state-slot': 1
     };
 }
@@ -47,11 +89,14 @@ export function isEmulatorLoaded() {
     return typeof window.EJS_load === 'function' || !!document.getElementById(EJS_LOADER_ID);
 }
 
-/** Aplica as globais do jogo que vai rodar. Chamar sempre antes de `bootEmulator()`. */
-export function configureEmulator(game, romUrl, coverUrl) {
+/**
+ * Aplica as globais do jogo que vai rodar. Chamar sempre antes de `bootEmulator()`.
+ * @param {{netplayServer?: string}} [opts]
+ */
+export function configureEmulator(game, romUrl, coverUrl, opts = {}) {
     window.EJS_player = '#game-container';
     window.EJS_gameUrl = romUrl;
-    window.EJS_gameID = game.cartucho;
+    window.EJS_gameID = gameIdNumerico(game.cartucho);
     window.EJS_gameName = game.name;
     window.EJS_backgroundImage = coverUrl;
     window.EJS_core = game.system || 'nes';
@@ -59,9 +104,9 @@ export function configureEmulator(game, romUrl, coverUrl) {
     window.EJS_disableAutoLang = true;
     window.EJS_cheats = game.cheats || [];
     window.EJS_startOnLoaded = true;
-    window.EJS_saveStateLocation = 'browser';
+    window.EJS_netplayServer = opts.netplayServer || '';
     window.EJS_defaultOptions = {
-        'save-state-location': 'browser',
+        'save-state-location': 'download',
         'save-state-slot': 1
     };
 }
@@ -99,7 +144,14 @@ export function bootEmulator() {
             if (typeof window.EJS_load === 'function') window.EJS_load();
             resolve();
         };
-        script.onerror = () => reject(new Error('falha ao carregar o loader do EmulatorJS'));
+        script.onerror = () => {
+            // Tirar a tag do DOM é o que torna a retentativa possível: o `if` acima
+            // considera "script presente" como "o loader cuida do boot" e resolve sem
+            // fazer nada. Com a tag morta ali, o botão Try_Again limpava a mensagem de
+            // erro e deixava o usuário num player vazio, sem erro e sem saída.
+            script.remove();
+            reject(new Error('falha ao carregar o loader do EmulatorJS'));
+        };
         document.body.appendChild(script);
     });
 }

@@ -89,14 +89,37 @@ depende de `this` (`isPlaying`, modais, `stopGame`). O markup usa `x-data="cartu
 parênteses — é `Alpine.data`, não uma função global).
 
 ### Cartucho vs ROM: dois CIDs
+`extractCID()` (ipfs.js) é o funil por onde entra qualquer coisa que aponte para um cartucho:
+CID cru, link de compartilhamento (`?cartucho=`), URL de gateway (`/ipfs/CID` ou
+`CID.ipfs.gateway`), `ipfs://`, ou link solto no meio de uma frase. É por isso que colar um link
+no campo de import mostra só o CID — quem compartilha manda URL, não CID.
+
+**A saída é canônica.** `B` (base32upper) e `F` (base16upper) descem para minúsculas, porque o
+CID é a identidade do cartucho: o mesmo jogo lido em caixa alta viraria uma segunda entrada na
+biblioteca, invisível para o `findGame`. Não é hipótese — o modo alfanumérico do QR só carrega
+maiúsculas e é comum um gerador usá-lo por ser mais compacto, então o QR chega com a URL inteira
+em caixa alta (daí o `?cartucho=` também ser casado sem sensibilidade a caixa). `Qm...`
+(base58btc) e `z...` **não** podem ser rebaixados: ali a caixa faz parte do conteúdo.
+
 Um "Cartucho" é um manifesto JSON no IPFS. O CID dele é a identidade do jogo; o manifesto aponta
 para um CID **separado** com o binário da ROM. `normalizeCartucho()` em `library.js` é o ponto único
 por onde passam todos os caminhos de import (URL, QR, CID manual) — campo novo de manifesto se
 adiciona ali. Entradas antigas gravavam `cid` em vez de `cartucho`: **sempre** use `gameCid(game)`
 para ler o identificador.
 
-`localStorage`: `cartucho_library` e `cartucho_gateway`. Toda mutação de `this.library` precisa de um
-`saveLibrary()` logo depois — não existe watcher de persistência.
+`localStorage`: `cartucho_library`, `cartucho_gateway`, `cartucho_last_gateway`,
+`cartucho_custom_gateways`, `cartucho_cache_limit` e `cartucho_netplay_server`. Toda mutação de
+`this.library` precisa de um `salvarAcervo()` logo depois — não existe watcher de persistência.
+Grave **sempre** por ali: é o único ponto que avisa o usuário quando o navegador recusa a
+escrita (janela privada do Safari e quota cheia lançam em `setItem`, e antes a alteração se
+perdia calada) e que pede `navigator.storage.persist()` assim que existe acervo a proteger.
+As demais preferências (gateway, cache, netplay) passam por `confirmarGravacao()`, pelo mesmo
+motivo: sem ele o toast anunciava "Using filebase.io" com a escrita recusada. A exceção
+deliberada é `rememberGateway`, que roda a cada download sem o usuário pedir nada.
+
+`loadLibrary()` **descarta entrada inservível** (sem CID, sem nome, sem ROM ou com core não
+suportado). Não é preciosismo: sem nome, `filteredLibrary` chamava `game.name.toLowerCase()`
+e a grade inteira sumia da tela ao digitar qualquer coisa na busca.
 
 ### Gateways são a parte frágil do sistema
 `KNOWN_GATEWAYS` é a lista **fixa**, curada empiricamente a partir da lista oficial do IPFS
@@ -113,6 +136,15 @@ A lista é curada porque: a maioria dos gateways públicos famosos
 trustless-gateway, storry.tv) responde 403/redirect **sem cabeçalho CORS**, ou tem DNS morto — o
 `fetch` do browser falha neles mesmo quando o conteúdo existe. Antes de adicionar um gateway, teste
 com `fetch` cross-origin real a partir de uma página, não abrindo a URL no navegador.
+
+O download da ROM tem **dois prazos**, e eles não são intercambiáveis: até os cabeçalhos
+vale `ROM_FIRST_BYTE_TIMEOUT` (60s, largo — busca fria no IPFS precisa achar os provedores
+na rede, e 35s até o primeiro byte já foi medido aqui), e entre pedaços do corpo vale
+`ROM_STALL_TIMEOUT` (20s, curto — aí o conteúdo já está vindo e parar é defeito). Nenhum
+limita o tempo total, que num arquivo grande é legitimamente longo. Sem isso, gateway que
+começa a enviar e emudece deixava `reader.read()` pendurado e a tela de boot presa em
+DOWNLOADING_ROM para sempre; agora estoura o prazo, o app entrega a URL crua do gateway e o
+EmulatorJS baixa por conta própria (perde a barra de progresso e o cache, mas o jogo abre).
 
 Antes de ir à rede, `loadGame` consulta o cache local de ROMs (`rom-cache.js`, Cache API,
 chaveado por CID). Como CID é hash do conteúdo, o cache é permanente e não precisa de
@@ -133,8 +165,14 @@ Dois caminhos de rede, ambos resilientes:
   até o último timeout.
 - **manifesto** — `fetchCartuchoAnywhere()`: tenta o gateway do usuário e, se ele não responder,
   todos os outros em paralelo. `not-json` não tenta os demais (o CID foi achado e não é um Cartucho).
-- **ROM** — `resolveFastestGateway()`: corre `HEAD` contra todos e usa o primeiro que responder. Se a
-  corrida inteira falhar, cai no último gateway que comprovadamente funcionou (`lastWorkingGateway`).
+  Cada tentativa tem o prazo da corrida (`GATEWAY_RACE_TIMEOUT`): sem ele, gateway que aceita a
+  conexão e nunca responde — o caso de um CID que ninguém tem — deixava a tela de import no
+  spinner para sempre, sem erro e sem saída.
+- **ROM** — `resolveFastestGateway()`: o gateway escolhido pelo usuário tem a primeira chance,
+  sozinho; só quando ele não responde dentro do prazo é que os demais correm `HEAD` e vale o
+  primeiro que responder. Antes o preferido apenas entrava na corrida geral, decidida por
+  latência, e quem escolhia um gateway específico quase nunca era atendido por ele. Se tudo
+  falhar, cai no último gateway que comprovadamente funcionou (`lastWorkingGateway`).
 
 Gateway `http:` é descartado quando a página é `https:` (mixed content). Preferência salva em
 gateway da lista `DEPRECATED_GATEWAYS` é migrada no boot, senão quem já usou o app fica preso num
@@ -151,6 +189,26 @@ v1 base32) antes de qualquer medição, e `measureGateways` distingue 403 (dedic
 Estado de WebAssembly/Emscripten não é desmontável de forma confiável, então trocar de jogo e sair do
 jogo são **navegações de página** (`reloadWithGame` / `reloadToPage`), e `initData()` relê `?cartucho=`
 e `?page=` no boot para restaurar a view.
+
+**Use `stable` no CDN, nunca `latest`.** A própria documentação avisa que `latest` junta
+código novo com cores estáveis e "occasionally be broken" — e foi isso que quebrou o save
+state aqui: `gameManager.getState()` estourava com `this.Module.EmulatorJSGetState is not a
+function` porque o loader chamava algo que o core servido não expõe. Com `stable` o mesmo
+estado sai em 1 MB sem erro.
+
+`EJS_gameID` **precisa ser número** (a doc é explícita: é o que separa saves, save states e
+cache entre jogos, e o netplay não sobe sem ele). O identificador daqui é um CID, então
+`gameIdNumerico()` faz o hash — trocar essa função invalida os saves de todo mundo.
+
+Save state vai para **download** (`EJS_defaultOptions['save-state-location'] = 'download'`,
+valores válidos `download` e `browser`): guardado no navegador, ele some junto com os dados
+do site sem o usuário nunca saber que tinha algo a perder. `EJS_saveStateLocation`, que
+existia neste código, **não é uma opção da API** — não volte a usá-la.
+
+Falha ao carregar o loader **precisa remover o `<script>` do DOM** (`script.remove()` no `onerror`):
+`bootEmulator` trata "script presente" como "o loader cuida do boot" e resolve sem fazer nada, então
+sem isso o botão Try_Again limpava a mensagem de erro e deixava o usuário num player vazio, sem erro
+e sem saída.
 
 Duas armadilhas já pagas:
 - As versões atuais do loader **bootam sozinhas e nunca expõem `EJS_load`**. Ausência de `EJS_load`
@@ -171,7 +229,21 @@ só vigia o eject (Start + Cima por 3s). Os alvos são elementos com a classe `.
 modal aberto. A lista fica cacheada por custo de CPU e é invalidada pelos `$watch` de
 `registerFocusWatchers()`. **Ao adicionar um modal novo:** registre-o no array de
 `registerFocusWatchers()` (app.js), na cadeia de `updateFocusCache()` e em `goBack()` (gamepad.js) —
-senão o controle continua navegando pelos elementos atrás do modal.
+senão o controle continua navegando pelos elementos atrás do modal. Isso vale também para as
+confirmações (`pendingDelete`, `pendingCacheLimit`): elas ficam no topo do body, fora de `<nav>` e
+`<main>`, então o ramo "sem modal" as filtrava para fora e o A abria um jogo com a pergunta
+"remover?" ainda na tela.
+
+O foco move por **geometria**, não pela ordem do DOM (`vizinhoNaDirecao`), senão descer uma linha
+numa grade de seis colunas custa seis toques. E quando o Alpine recria os elementos focados — trocar
+ABC/abc muda o `:key` das 26 teclas —, refazer o cache não basta: é preciso `refocarAtual()`, ou o
+anel some até a próxima direção apertada.
+
+**Teclado na tela e `@click.away` não se dão bem.** O teclado é irmão dos modais no fim do body
+(precisa ser: serve à busca e aos campos das configurações), então cada tecla apertada conta como
+clique fora e fechava o modal de import na primeira letra. O `click.away` do modal checa
+`tecladoAberto` por isso, e `resetImport()` fecha o teclado junto — senão ele fica flutuando sobre a
+biblioteca, prendendo o foco e escrevendo num campo que já saiu da tela.
 
 ## Design
 
@@ -189,7 +261,35 @@ permitidos. O essencial ao mexer no markup:
   com véu clicável.
 - As ações `Add_Cartucho` e `Settings` ficam **fora** do `<nav>` rolável, fixas no rodapé da
   barra — dentro dele, sumiam quando a lista de consoles crescia.
-- Configurações é **página** (`activePage === 'Settings'`, com `?page=Settings`), não modal.
+- Configurações e About são **páginas** (`activePage`, com `?page=`), não modais. Página fixa
+  nova precisa entrar em `PAGINAS_FIXAS` (app.js): `menuItems` só tem Home e os consoles do
+  acervo, então sem isso `stopGame('About')` recarrega e cai na Home.
+- **A voz da interface é a do projeto, não a de landing page.** O About nasceu com quatro cards
+  de cores diferentes (indigo, verde, âmbar, vermelho), um brilho atrás de cada, ícone por card,
+  selo "Coming Soon" com brilho deslizante e ícone pulsando — e um texto que não dizia nada
+  ("our goal is to build an open, censorship-resistant library"). Foi refeito com a forma da
+  página de configurações: painel de vidro, título em indigo, texto de leitura, um acento só.
+  Vermelho e âmbar já significam perigo e atenção no app; gastá-los como enfeite tira o
+  significado deles. Conteúdo específico (o que é o manifesto, por que existem gateways, o que
+  fica gravado no aparelho) vale mais que adjetivo.
+- **O leitor de QR não desenha enquadramento.** O `qrbox` do html5-qrcode é um quadrado de
+  tamanho fixo sobre um vídeo responsivo: só coincide com o vídeo por acidente, e em qualquer
+  outra largura fica torto. Sem ele a leitura vale o quadro inteiro, que é mais fácil de
+  acertar. No lugar dele há uma linha de status no canto (`scanStatus`: procurando, achou,
+  não é cartucho) — o problema real não era mira, era não haver sinal nenhum ao ler um QR que
+  não fosse um Cartucho.
+- **O QR de compartilhar é validado por decodificação, não por aparência.** Ele estava
+  ilegível para qualquer leitor — `colorLight: 'transparent'` deixa as bordas dos módulos se
+  acumularem e sujarem o código, e nem uma captura digital perfeita decodificava (27.722
+  pixels escuros contra 19.468 do mesmo código com fundo branco). O preenchimento claro
+  **precisa ser opaco**. As outras três regras vieram de medição: nível `M` em vez de `H`
+  (sem logo sobreposto, 30% de redundância só encolhe os módulos: 41 contra 57, e módulo
+  maior é o que decide leitura de longe), lado sempre múltiplo inteiro do número de módulos
+  (tamanho quebrado gera colunas de larguras diferentes — foi assim que o mesmo código
+  passava em 512px e falhava em 400px), e zona silenciosa de 4 módulos, que é o mínimo da
+  norma. O indigo da marca decodifica igual ao preto em todos os testes, então fica.
+  Para conferir depois de mexer: gere o QR e decodifique com o próprio `html5-qrcode`
+  (`leitor.scanFile`), reduzindo e desfocando a imagem para simular câmera de longe.
 - **Preview de link é fixo, por decisão.** As meta tags do `index.html` trazem a arte do app
   (`assets/img/og-cover.png`, 1200×630, texto em inglês) e **não podem ficar vazias**: robô de
   rede social não executa JS, então é só isso que ele lê — deixar `og:image` vazio para
@@ -197,8 +297,8 @@ permitidos. O essencial ao mexer no markup:
   e imagem com os dados do jogo em runtime, o que vale para a aba, o histórico e a Web Share
   API. Preview com a capa de cada cartucho exigiria algo montando o HTML por CID (um Worker na
   frente do site): foi avaliado e descartado.
-- Os textos do preview (`og:*`, `twitter:*`, `description`) são em **inglês**, como a imagem e
-  o README; a interface do app segue em português.
+- Os textos do preview (`og:*`, `twitter:*`, `description`) são em **inglês**, como a imagem,
+  o README e a interface.
 - **Todo item de navegação trata `isPlaying`.** As telas do acervo e de configurações vivem
   atrás de `x-show="!isPlaying"`, então trocar `activePage` com o emulador aberto não mostra
   nada: o clique tem que sair do jogo com `stopGame('<destino>')`. Item novo na barra segue a
@@ -238,4 +338,7 @@ gerado.
 - Sucesso: `flashToast(mensagem)` — a mensagem é **obrigatória**. Ela já foi um texto fixo
   reaproveitado por sete ações, e salvar um gateway anunciava "CARTUCHO_COPIED".
 - Tokens do Tailwind (`cartucho-*`, `font-retro`/`orbitron`/`arcade`) em vez de hex cru.
-- Textos da UI misturam inglês e português; não há camada de i18n.
+- **A interface é toda em inglês** — markup, toasts, mensagens de erro, `aria-label`,
+  placeholders. Não há camada de i18n: texto novo já entra em inglês. Comentários de código,
+  mensagens de `console.*` e a documentação (este arquivo, DESIGN.md, README) continuam em
+  português.
